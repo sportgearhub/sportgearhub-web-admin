@@ -106,3 +106,52 @@ Expected callback route:
 ```text
 https://admin.sportgearhub.ru/auth/verify-email?token=...
 ```
+
+## Provider Onboarding Review
+
+The API has a minimal internal review surface for submitted provider onboarding applications.
+
+Read an application:
+
+```http
+GET /internal/provider-onboarding/{applicationId}
+```
+
+Apply a review action:
+
+```http
+POST /internal/provider-onboarding/{applicationId}/actions
+```
+
+Request:
+
+```json
+{
+  "action": "approve",
+  "reasonCode": null,
+  "comments": null
+}
+```
+
+Supported actions:
+
+- `approve`
+- `request_changes`
+- `reject`
+
+`request_changes` and `reject` require `reasonCode`.
+
+Current gap:
+
+- there is no dedicated onboarding review queue endpoint yet
+- the admin frontend needs either a queue/list endpoint or another admin list that surfaces submitted onboarding application ids before this can be a complete review screen
+
+## Shared Address Suggestions
+
+Use the global address helper for any admin forms that need RU address autocomplete:
+
+```http
+GET /api/v1/addresses/ru/suggestions?query=Екатеринбург%20Ленина&count=10
+```
+
+This endpoint is suggestion-only. Store the selected or manually typed address through the owning feature's API contract.
