@@ -61,7 +61,7 @@ Request:
 
 ```json
 {
-  "email": "admin@example.com",
+  "email": "<admin-email>",
   "app": "admin"
 }
 ```
@@ -96,7 +96,7 @@ Request:
 
 ```json
 {
-  "email": "admin@example.com",
+  "email": "<admin-email>",
   "app": "admin"
 }
 ```

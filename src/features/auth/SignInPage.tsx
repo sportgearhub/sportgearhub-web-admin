@@ -2,17 +2,17 @@ import { useState } from 'react'
 import { AuthFrame } from './AuthFrame'
 
 type SignInPageProps = {
-  onSignIn: (email: string) => void
-  onDevSignIn: () => void
+  onSignIn: (email: string, password: string) => Promise<void>
   onForgotPassword: () => void
 }
 
-export function SignInPage({ onSignIn, onDevSignIn, onForgotPassword }: SignInPageProps) {
+export function SignInPage({ onSignIn, onForgotPassword }: SignInPageProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function submitForm(event: React.FormEvent<HTMLFormElement>) {
+  async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
     if (!email.trim() || !password) {
@@ -21,7 +21,15 @@ export function SignInPage({ onSignIn, onDevSignIn, onForgotPassword }: SignInPa
     }
 
     setError('')
-    onSignIn(email.trim())
+    setIsSubmitting(true)
+
+    try {
+      await onSignIn(email.trim(), password)
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Не удалось войти')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -41,16 +49,12 @@ export function SignInPage({ onSignIn, onDevSignIn, onForgotPassword }: SignInPa
 
         {error ? <p className="form-error">{error}</p> : null}
 
-        <button type="submit" className="primary-action">
-          Войти
+        <button type="submit" className="primary-action" disabled={isSubmitting}>
+          {isSubmitting ? 'Входим...' : 'Войти'}
         </button>
 
         <button type="button" className="text-action" onClick={onForgotPassword}>
           Забыли пароль?
-        </button>
-
-        <button type="button" className="dev-sign-in-button" onClick={onDevSignIn}>
-          Войти как администратор
         </button>
       </form>
     </AuthFrame>

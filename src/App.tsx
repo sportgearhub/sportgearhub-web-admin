@@ -3,15 +3,16 @@ import './App.css'
 import { ConsentModal } from './components/ConsentModal'
 import { MetricsGrid } from './components/MetricsGrid'
 import { OperationalQueues } from './components/OperationalQueues'
-import { navItems, operationalQueues, sectionActions, seededAdminSession } from './data/adminPrototype'
+import { navItems, sectionActions } from './data/adminConfig'
 import { DomainPanel } from './features/admin/DomainPanel'
 import { OnboardingReview } from './features/admin/OnboardingReview'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignInPage } from './features/auth/SignInPage'
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage'
+import { signInWithPassword, signOutCurrentUser } from './features/auth/authApi'
 import { ConsoleShell } from './layout/ConsoleShell'
-import type { AdminSectionId, AdminSession, ConsoleAction } from './types/admin'
+import type { AdminSectionId, AdminSession, ConsoleAction, QueueItem } from './types/admin'
 
 const CONSOLE_PATH = '/console'
 const FORGOT_PASSWORD_PATH = '/auth/forgot-password'
@@ -21,6 +22,7 @@ const VERIFY_EMAIL_PATH = '/auth/verify-email'
 const LOCATION_CHANGE_EVENT = 'sportgearhub-location-change'
 const SIGN_IN_PATHS = new Set([SIGN_IN_PATH, '/login', '/auth/sign-in', '/auth/login'])
 const SIGN_OUT_BUTTON_LABELS = new Set(['Вернуться ко входу', 'Back to sign in'])
+const operationalQueues: QueueItem[] = []
 
 function getCurrentPath() {
   return window.location.pathname
@@ -185,18 +187,14 @@ function App() {
     setPendingAction(null)
   }
 
-  function signIn(email: string) {
-    const normalizedEmail = email.toLowerCase()
-    setActiveSession({ ...seededAdminSession, email: normalizedEmail })
+  async function signIn(email: string, password: string) {
+    const session = await signInWithPassword(email.toLowerCase(), password)
+    setActiveSession(session)
     goToConsole()
   }
 
-  function devSignIn() {
-    setActiveSession(seededAdminSession)
-    goToConsole()
-  }
-
-  function signOut() {
+  async function signOut() {
+    await signOutCurrentUser().catch(() => undefined)
     resetToSignIn()
   }
 
@@ -213,7 +211,7 @@ function App() {
   }
 
   if (!activeSession || isSignInPath(normalizedPath)) {
-    return <SignInPage onSignIn={signIn} onDevSignIn={devSignIn} onForgotPassword={goToForgotPassword} />
+    return <SignInPage onSignIn={signIn} onForgotPassword={goToForgotPassword} />
   }
 
   return (
@@ -240,7 +238,7 @@ function App() {
           {activeSection === 'onboarding' ? (
             <OnboardingReview />
           ) : (
-            <DomainPanel activeSection={activeSection} actions={visibleActions} onAction={requestActionConsent} />
+            <DomainPanel actions={visibleActions} onAction={requestActionConsent} />
           )}
         </>
       )}

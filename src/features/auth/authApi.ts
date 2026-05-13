@@ -1,3 +1,5 @@
+import type { AdminSession } from '../../types/admin'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 const ADMIN_APP = 'admin'
 
@@ -6,33 +8,98 @@ type ApiErrorBody = {
   title?: string
 }
 
+type AuthUserResponse = {
+  userId: string
+  name?: string | null
+  surname?: string | null
+  email?: string | null
+  emailVerified?: boolean
+  mustChangePassword?: boolean
+  roles?: string[]
+}
+
 function buildApiUrl(path: string) {
   return `${API_BASE_URL}${path}`
 }
 
-async function postJson(path: string, body: Record<string, string>) {
+function mapSession(user: AuthUserResponse): AdminSession {
+  const nameParts = [user.name, user.surname].filter(Boolean)
+
+  return {
+    userId: user.userId,
+    name: nameParts.join(' ') || user.email || 'Администратор',
+    email: user.email ?? '',
+    roles: user.roles ?? [],
+  }
+}
+
+async function requestJson<TResponse>(path: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers)
+
+  headers.set('Accept', 'application/json')
+
+  if (init?.body) {
+    headers.set('Content-Type', 'application/json')
+  }
+
   const response = await fetch(buildApiUrl(path), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+    ...init,
+    credentials: 'include',
+    headers,
   })
 
-  if (response.ok) {
-    return
+  if (!response.ok) {
+    let errorMessage = 'Не удалось выполнить запрос'
+
+    try {
+      const errorBody = (await response.json()) as ApiErrorBody
+      errorMessage = errorBody.message ?? errorBody.title ?? errorMessage
+    } catch {
+      errorMessage = 'Не удалось выполнить запрос'
+    }
+
+    throw new Error(errorMessage)
   }
 
-  let errorMessage = 'Не удалось выполнить запрос'
+  if (response.status === 204) {
+    return undefined as TResponse
+  }
+
+  return (await response.json()) as TResponse
+}
+
+async function postJson(path: string, body: Record<string, string>) {
+  await requestJson<void>(path, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export async function signInWithPassword(email: string, password: string) {
+  const user = await requestJson<AuthUserResponse>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  })
 
   try {
-    const errorBody = (await response.json()) as ApiErrorBody
-    errorMessage = errorBody.message ?? errorBody.title ?? errorMessage
+    return await getCurrentUser()
   } catch {
-    errorMessage = 'Не удалось выполнить запрос'
+    return mapSession(user)
   }
+}
 
-  throw new Error(errorMessage)
+export async function getCurrentUser() {
+  const user = await requestJson<AuthUserResponse>('/api/v1/auth/me')
+  return mapSession(user)
+}
+
+export function signOutCurrentUser() {
+  return requestJson<void>('/api/v1/auth/signout', {
+    method: 'POST',
+  })
 }
 
 export function requestPasswordReset(email: string) {

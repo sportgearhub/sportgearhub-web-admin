@@ -80,10 +80,6 @@ export type AdminSession = {
   name: string
   email: string
   roles: string[]
-  scopes: string[]
-  oidcClient: string
 }
 
 export type FactRow = readonly [label: string, value: string]
-
-export type UserRow = readonly [id: string, email: string, role: string, provider: string]

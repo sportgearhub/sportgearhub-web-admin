@@ -1,18 +1,16 @@
 import { useState } from 'react'
-import { sectionRecords } from '../../data/adminPrototype'
 import { FactTable } from '../../components/FactTable'
 import { Panel } from '../../components/Panel'
-import type { AdminSectionId, ConsoleAction, SectionRecord } from '../../types/admin'
+import type { ConsoleAction, SectionRecord } from '../../types/admin'
 
 type DomainPanelProps = {
-  activeSection: AdminSectionId
   actions: ConsoleAction[]
   onAction: (action: ConsoleAction) => void
 }
 
-export function DomainPanel({ activeSection, actions, onAction }: DomainPanelProps) {
+export function DomainPanel({ actions, onAction }: DomainPanelProps) {
   const [selectedRecord, setSelectedRecord] = useState<SectionRecord | null>(null)
-  const records = sectionRecords[activeSection] ?? []
+  const records: SectionRecord[] = []
 
   function openRecord(record: SectionRecord) {
     setSelectedRecord(record)
@@ -39,24 +37,32 @@ export function DomainPanel({ activeSection, actions, onAction }: DomainPanelPro
               </tr>
             </thead>
             <tbody>
-              {records.map((record) => (
-                <tr
-                  key={record.id}
-                  className="clickable-row"
-                  tabIndex={0}
-                  onClick={() => openRecord(record)}
-                  onKeyDown={(event) => openRecordFromKeyboard(event, record)}
-                >
-                  <td>
-                    {record.severity ? <span className={`severity ${record.severity}`} aria-hidden="true"></span> : null}
-                    <strong>{record.title}</strong>
-                    <small>{record.id}</small>
+              {records.length ? (
+                records.map((record) => (
+                  <tr
+                    key={record.id}
+                    className="clickable-row"
+                    tabIndex={0}
+                    onClick={() => openRecord(record)}
+                    onKeyDown={(event) => openRecordFromKeyboard(event, record)}
+                  >
+                    <td>
+                      {record.severity ? <span className={`severity ${record.severity}`} aria-hidden="true"></span> : null}
+                      <strong>{record.title}</strong>
+                      <small>{record.id}</small>
+                    </td>
+                    <td>{record.owner}</td>
+                    <td>{record.status}</td>
+                    <td>{record.updatedAt}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="empty-table-cell">
+                    В этом разделе пока нет записей.
                   </td>
-                  <td>{record.owner}</td>
-                  <td>{record.status}</td>
-                  <td>{record.updatedAt}</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

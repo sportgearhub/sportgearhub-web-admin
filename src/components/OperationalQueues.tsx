@@ -19,18 +19,26 @@ export function OperationalQueues({ items }: OperationalQueuesProps) {
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <span className={`severity ${item.severity}`}></span>
-                  <strong>{item.title}</strong>
-                  <small>{item.id}</small>
+            {items.length ? (
+              items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <span className={`severity ${item.severity}`}></span>
+                    <strong>{item.title}</strong>
+                    <small>{item.id}</small>
+                  </td>
+                  <td>{item.owner}</td>
+                  <td>{item.status}</td>
+                  <td>{item.updatedAt}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="empty-table-cell">
+                  Активных задач нет.
                 </td>
-                <td>{item.owner}</td>
-                <td>{item.status}</td>
-                <td>{item.updatedAt}</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
