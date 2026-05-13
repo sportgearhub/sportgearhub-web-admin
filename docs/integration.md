@@ -112,9 +112,64 @@ https://admin.sportgearhub.ru/auth/verify-email?token=...
 The API has a minimal internal review surface for submitted provider onboarding applications.
 
 ```http
+GET /internal/provider-onboarding/options
+GET /internal/provider-onboarding?filter=status=in=(submitted,in_review)&sort=-submittedAt&page=1&pageSize=20
 GET /internal/provider-onboarding/{applicationId}
 POST /internal/provider-onboarding/{applicationId}/actions
 ```
+
+Use `GET /internal/provider-onboarding/options` to populate available filter fields, sort fields, enum values, and examples. The list route supports:
+
+- `filter`: RSQL expression over the option fields
+- `sort`: comma-separated field names, prefix descending fields with `-`
+- `page`, `pageSize`: default API paging model, with server-side maximum page size
+
+Useful RSQL forms:
+
+```text
+status=in=(submitted,in_review)
+displayName==*rent*
+displayName==Sport*
+displayName=contains=rent
+displayName=starts=Sport
+displayName=ends=Rentals
+submittedAt>=2026-05-01T00:00:00Z
+status==submitted;taxNumber==7707083893
+```
+
+`*` wildcards work with string equality: `name==B*` starts with, `name==*t*` contains, and `name==*x` ends with.
+
+The list endpoint is the review queue entry point. It returns:
+
+```json
+{
+  "items": [
+    {
+      "applicationId": "00000000-0000-0000-0000-000000000001",
+      "applicantUserId": "00000000-0000-0000-0000-000000000002",
+      "providerId": null,
+      "status": "submitted",
+      "displayName": "Sportgearhub Rentals",
+      "legalName": "ООО Спортгирхаб",
+      "legalCountryCode": "RU",
+      "legalForm": "company",
+      "taxNumber": "7707083893",
+      "submittedAt": "2026-05-13T10:00:00Z",
+      "updatedAt": "2026-05-13T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasPreviousPage": false,
+    "hasNextPage": false
+  }
+}
+```
+
+If no `filter` is sent, the API defaults the list to the review queue statuses `submitted` and `in_review`.
 
 Action request:
 
@@ -127,11 +182,6 @@ Action request:
 ```
 
 Supported actions are `approve`, `request_changes`, and `reject`. `request_changes` and `reject` require `reasonCode`.
-
-Current gap:
-
-- there is no dedicated onboarding review queue endpoint yet
-- the admin frontend needs either a queue/list endpoint or another admin list that surfaces submitted onboarding application ids before this can be a complete review screen
 
 ## Shared Address Suggestions
 
