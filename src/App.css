@@ -384,6 +384,12 @@
   font-size: 12px;
 }
 
+.data-table .empty-table-cell {
+  padding: 24px 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
 .data-table .severity {
   margin-right: 8px;
 }

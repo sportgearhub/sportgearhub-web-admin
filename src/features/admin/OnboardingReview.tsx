@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { onboardingApplications } from '../../data/adminPrototype'
 import type { OnboardingApplication, Severity } from '../../types/admin'
 import {
   getProviderOnboarding,
@@ -61,7 +60,7 @@ function mapOnboardingResponse(response: ProviderOnboardingResponse, fallback?: 
   const draft = response.draft
   const displayName = draft?.displayName ?? fallback?.providerName ?? 'Заявка провайдера'
   const legalName = draft?.legalName ?? fallback?.legalName ?? 'Не указано'
-  const city = draft?.cityId ? `ID города: ${draft.cityId}` : fallback?.city ?? 'Не указан'
+  const city = draft?.cityId ? 'Указан в заявке' : fallback?.city ?? 'Не указан'
   const applicationId = response.applicationId ?? fallback?.id ?? ''
 
   return {
@@ -85,9 +84,7 @@ function mapOnboardingResponse(response: ProviderOnboardingResponse, fallback?: 
     city,
     address: draft?.address ?? fallback?.address,
     description: draft?.description ?? fallback?.description,
-    reviewNote: response.providerId
-      ? `Данные загружены из API. Provider ID: ${response.providerId}`
-      : 'Данные загружены из API. Профиль провайдера еще не создан.',
+    reviewNote: response.providerId ? 'Профиль провайдера уже создан.' : 'Профиль провайдера будет создан после одобрения.',
     checklist: [
       { label: 'Профиль заполнен', done: isReadyChecklistStatus(response.checklist?.profile) },
       { label: 'Юридические данные заполнены', done: isReadyChecklistStatus(response.checklist?.legal) },
@@ -110,7 +107,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export function OnboardingReview() {
-  const [applications, setApplications] = useState<OnboardingApplication[]>(onboardingApplications)
+  const [applications, setApplications] = useState<OnboardingApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<OnboardingApplication | null>(null)
   const [lookupId, setLookupId] = useState('')
   const [lookupError, setLookupError] = useState('')
@@ -132,7 +129,7 @@ export function OnboardingReview() {
     const applicationId = lookupId.trim()
 
     if (!GUID_PATTERN.test(applicationId)) {
-      setLookupError('Укажите applicationId в формате GUID')
+      setLookupError('Укажите корректный номер заявки')
       return
     }
 
@@ -182,12 +179,12 @@ export function OnboardingReview() {
       <section className="panel wide">
         <form className="onboarding-lookup" onSubmit={submitLookup}>
           <label>
-            <span>Загрузить заявку из API</span>
+            <span>Найти заявку</span>
             <input
               value={lookupId}
               onChange={(event) => setLookupId(event.target.value)}
-              placeholder="applicationId"
-              aria-label="Application ID"
+              placeholder="Номер заявки"
+              aria-label="Номер заявки"
             />
           </label>
           <button type="submit" className="secondary-action" disabled={isLookupLoading}>
@@ -196,11 +193,6 @@ export function OnboardingReview() {
         </form>
 
         {lookupError ? <p className="panel-error">{lookupError}</p> : null}
-
-        <p className="panel-note">
-          В Swagger пока нет отдельной очереди онбординга. Список ниже остается локальной витриной, а заявки по GUID загружаются и ревьюятся через
-          внутренние API.
-        </p>
 
         <div className="table-scroll">
           <table className="data-table onboarding-table">
@@ -214,28 +206,36 @@ export function OnboardingReview() {
               </tr>
             </thead>
             <tbody>
-              {applications.map((application) => (
-                <tr
-                  key={application.id}
-                  className="clickable-row"
-                  tabIndex={0}
-                  onClick={() => void openApplication(application)}
-                  onKeyDown={(event) => openApplicationFromKeyboard(event, application)}
-                >
-                  <td>
-                    <span className={`severity ${application.priority}`} aria-hidden="true"></span>
-                    <strong>{application.providerName}</strong>
-                    <small>{application.id}</small>
+              {applications.length ? (
+                applications.map((application) => (
+                  <tr
+                    key={application.id}
+                    className="clickable-row"
+                    tabIndex={0}
+                    onClick={() => void openApplication(application)}
+                    onKeyDown={(event) => openApplicationFromKeyboard(event, application)}
+                  >
+                    <td>
+                      <span className={`severity ${application.priority}`} aria-hidden="true"></span>
+                      <strong>{application.providerName}</strong>
+                      <small>Заявка {application.id}</small>
+                    </td>
+                    <td>
+                      <strong>{application.applicantName}</strong>
+                      <small>{application.applicantEmail}</small>
+                    </td>
+                    <td>{application.city}</td>
+                    <td>{application.status}</td>
+                    <td>{application.submittedAt}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="empty-table-cell">
+                    Введите номер заявки, чтобы открыть ее для проверки.
                   </td>
-                  <td>
-                    <strong>{application.applicantName}</strong>
-                    <small>{application.applicantEmail}</small>
-                  </td>
-                  <td>{application.city}</td>
-                  <td>{application.status}</td>
-                  <td>{application.submittedAt}</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -277,12 +277,12 @@ function OnboardingDetailModal({
     const normalizedComments = comments.trim()
 
     if (!canReview) {
-      setActionError('Сначала загрузите реальную заявку из API по applicationId')
+      setActionError('Сначала откройте заявку для проверки')
       return
     }
 
     if (requiresReason && !normalizedReasonCode) {
-      setActionError('Для этого решения нужен reasonCode')
+      setActionError('Для этого решения нужна причина')
       return
     }
 
@@ -318,7 +318,7 @@ function OnboardingDetailModal({
         <header className="onboarding-modal-header">
           <div>
             <h2 id="onboarding-title">{application.providerName}</h2>
-            <span>{application.id}</span>
+            <span>Заявка {application.id}</span>
           </div>
           <button type="button" className="modal-close" onClick={onClose}>
             Закрыть
@@ -349,7 +349,7 @@ function OnboardingDetailModal({
                   <td>{application.status}</td>
                 </tr>
                 <tr>
-                  <th>Provider ID</th>
+                  <th>Профиль провайдера</th>
                   <td>{application.providerId ?? 'Еще не создан'}</td>
                 </tr>
               </tbody>
@@ -420,13 +420,13 @@ function OnboardingDetailModal({
 
           <section className="review-decision-panel">
             <h3>Решение</h3>
-            {!canReview ? <p className="form-note">Действия доступны только для заявки, загруженной из API по GUID.</p> : null}
+            {!canReview ? <p className="form-note">Откройте загруженную заявку, чтобы принять решение.</p> : null}
             <label>
-              <span>Reason code</span>
+              <span>Причина решения</span>
               <input
                 value={reasonCode}
                 onChange={(event) => setReasonCode(event.target.value)}
-                placeholder="required for request_changes/reject"
+                placeholder="Обязательно для запроса изменений или отказа"
                 disabled={!canReview}
               />
             </label>

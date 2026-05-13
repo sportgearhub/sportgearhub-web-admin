@@ -4,7 +4,6 @@ import type {
   ConsoleAction,
   FactRow,
   NavItem,
-  OnboardingApplication,
   QueueItem,
   SectionRecord,
   UserRow,
@@ -40,14 +39,6 @@ export const seededAdminSession: AdminSession = {
 
 export const operationalQueues: QueueItem[] = [
   {
-    id: 'APP-1042',
-    title: 'Ural Peak Rentals ожидает проверки юридических данных',
-    owner: 'Онбординг провайдеров',
-    severity: 'warning',
-    status: 'ожидает проверки',
-    updatedAt: '2026-05-04 09:32',
-  },
-  {
     id: 'PROV-233',
     title: 'Snowline Sports заблокирован из-за дрейфа возможностей',
     owner: 'Управление провайдерами',
@@ -74,7 +65,6 @@ export const operationalQueues: QueueItem[] = [
 ]
 
 export const sectionActions: Partial<Record<AdminSectionId, ConsoleAction[]>> = {
-  onboarding: [{ label: 'Одобрить' }, { label: 'Запросить изменения' }, { label: 'Отклонить', tone: 'danger' }],
   governance: [{ label: 'Активировать' }, { label: 'Возобновить проверку' }, { label: 'Архивировать', tone: 'danger' }],
   readiness: [{ label: 'Поставить на паузу', tone: 'danger' }, { label: 'Снять паузу' }],
   payments: [{ label: 'Обновить статус платежа' }, { label: 'Безопасная отмена', tone: 'danger' }],
@@ -82,66 +72,6 @@ export const sectionActions: Partial<Record<AdminSectionId, ConsoleAction[]>> = 
   ledger: [{ label: 'Запустить диагностику', tone: 'danger' }],
   drift: [{ label: 'Обновить оценку' }, { label: 'Заблокировать публикацию', tone: 'danger' }],
 }
-
-export const onboardingApplications: OnboardingApplication[] = [
-  {
-    id: 'APP-1042',
-    providerName: 'Ural Peak Rentals',
-    applicantName: 'Елена Морозова',
-    applicantEmail: 'owner@uralpeak.example',
-    submittedAt: '2026-05-04 09:32',
-    status: 'ожидает проверки',
-    priority: 'warning',
-    legalName: 'Ural Peak Rentals LLC',
-    taxId: '6671 4409 8821',
-    city: 'Екатеринбург',
-    reviewNote: 'Проверить юридическое наименование и полномочия заявителя.',
-    checklist: [
-      { label: 'Юридическое лицо заполнено', done: true },
-      { label: 'Контакт заявителя подтвержден', done: true },
-      { label: 'Документы совпадают с профилем', done: false },
-      { label: 'Риски запуска проверены', done: false },
-    ],
-  },
-  {
-    id: 'APP-1038',
-    providerName: 'Nord Trail Camp',
-    applicantName: 'Максим Ильин',
-    applicantEmail: 'max@nordtrail.example',
-    submittedAt: '2026-05-03 16:18',
-    status: 'нужны изменения',
-    priority: 'critical',
-    legalName: 'Nord Trail Camp',
-    taxId: '7712 0094 3318',
-    city: 'Пермь',
-    reviewNote: 'Не хватает подтверждения адреса и полного имени владельца.',
-    checklist: [
-      { label: 'Юридическое лицо заполнено', done: true },
-      { label: 'Контакт заявителя подтвержден', done: false },
-      { label: 'Документы совпадают с профилем', done: false },
-      { label: 'Риски запуска проверены', done: false },
-    ],
-  },
-  {
-    id: 'APP-1029',
-    providerName: 'Kazan Sport Hub',
-    applicantName: 'Айгуль Сафина',
-    applicantEmail: 'aigul@kazansport.example',
-    submittedAt: '2026-05-02 11:06',
-    status: 'готово к решению',
-    priority: 'ok',
-    legalName: 'Kazan Sport Hub LLC',
-    taxId: '1655 9201 7742',
-    city: 'Казань',
-    reviewNote: 'Проверки пройдены, можно принимать решение.',
-    checklist: [
-      { label: 'Юридическое лицо заполнено', done: true },
-      { label: 'Контакт заявителя подтвержден', done: true },
-      { label: 'Документы совпадают с профилем', done: true },
-      { label: 'Риски запуска проверены', done: true },
-    ],
-  },
-]
 
 export const governanceFacts: readonly FactRow[] = [
   ['Состояние провайдера', 'на ручной проверке'],

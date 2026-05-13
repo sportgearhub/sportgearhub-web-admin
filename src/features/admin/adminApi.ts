@@ -57,9 +57,9 @@ function buildApiUrl(path: string) {
 async function parseError(response: Response) {
   try {
     const errorBody = (await response.json()) as ApiErrorBody
-    return errorBody.message ?? errorBody.title ?? `API вернул ${response.status}`
+    return errorBody.message ?? errorBody.title ?? `Сервис вернул ${response.status}`
   } catch {
-    return `API вернул ${response.status}`
+    return `Сервис вернул ${response.status}`
   }
 }
 

@@ -111,19 +111,12 @@ https://admin.sportgearhub.ru/auth/verify-email?token=...
 
 The API has a minimal internal review surface for submitted provider onboarding applications.
 
-Read an application:
-
 ```http
 GET /internal/provider-onboarding/{applicationId}
-```
-
-Apply a review action:
-
-```http
 POST /internal/provider-onboarding/{applicationId}/actions
 ```
 
-Request:
+Action request:
 
 ```json
 {
@@ -133,13 +126,7 @@ Request:
 }
 ```
 
-Supported actions:
-
-- `approve`
-- `request_changes`
-- `reject`
-
-`request_changes` and `reject` require `reasonCode`.
+Supported actions are `approve`, `request_changes`, and `reject`. `request_changes` and `reject` require `reasonCode`.
 
 Current gap:
 
