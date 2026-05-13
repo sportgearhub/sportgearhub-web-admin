@@ -36,6 +36,7 @@ The admin web app owns these auth routes:
 
 ```text
 https://admin.sportgearhub.ru/sign-in
+https://admin.sportgearhub.ru/auth/forgot-password
 https://admin.sportgearhub.ru/auth/reset-password?token=...
 https://admin.sportgearhub.ru/auth/verify-email?token=...
 ```
@@ -47,6 +48,8 @@ https://admin.sportgearhub.ru/console
 ```
 
 The fallback sign-in aliases `/login`, `/auth/sign-in`, and `/auth/login` are accepted by the frontend and should reset the active admin session. New API-generated links should prefer `/sign-in`.
+
+The frontend calls auth endpoints against same-origin `/api` by default. Set `VITE_API_BASE_URL` only when an environment needs an explicit API origin; the value must not change the admin email link domain.
 
 ## Password Reset
 
@@ -65,9 +68,19 @@ Request:
 
 Frontend behavior:
 
+- collect the admin email at `/auth/forgot-password`
 - always show generic success copy
 - expect email links to land on `https://admin.sportgearhub.ru/auth/reset-password?token=...`
 - complete the reset with `POST /api/v1/auth/password/reset`
+
+Reset request:
+
+```json
+{
+  "token": "email-link-token",
+  "password": "new-admin-password"
+}
+```
 
 ## Email Verification
 

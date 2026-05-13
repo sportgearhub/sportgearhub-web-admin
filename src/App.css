@@ -643,9 +643,27 @@
   font-weight: 700;
 }
 
+.form-note,
+.form-success {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.form-success {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .sign-in-form .primary-action {
   justify-content: center;
   width: 100%;
+}
+
+.sign-in-form button:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
 }
 
 .dev-sign-in-button {
@@ -655,6 +673,21 @@
   border: 1px solid var(--border);
   border-radius: 7px;
   font-weight: 700;
+}
+
+.text-action {
+  min-height: 32px;
+  padding: 0;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  font-weight: 800;
+  text-align: center;
+}
+
+.text-action:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .modal-backdrop {
