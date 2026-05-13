@@ -39,6 +39,8 @@ export type ConsoleAction = {
 
 export type OnboardingApplication = {
   id: string
+  providerId?: string
+  isApiBacked?: boolean
   providerName: string
   applicantName: string
   applicantEmail: string
@@ -46,8 +48,16 @@ export type OnboardingApplication = {
   status: string
   priority: Severity
   legalName: string
+  legalCountryCode?: string
+  legalForm?: string
   taxId: string
+  registrationNumber?: string
+  branchNumber?: string
+  registeredAddress?: string
+  contactPhone?: string
   city: string
+  address?: string
+  description?: string
   reviewNote: string
   checklist: Array<{
     label: string

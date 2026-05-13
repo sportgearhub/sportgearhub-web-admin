@@ -238,7 +238,7 @@ function App() {
       ) : (
         <>
           {activeSection === 'onboarding' ? (
-            <OnboardingReview actions={visibleActions} onAction={requestActionConsent} />
+            <OnboardingReview />
           ) : (
             <DomainPanel activeSection={activeSection} actions={visibleActions} onAction={requestActionConsent} />
           )}
