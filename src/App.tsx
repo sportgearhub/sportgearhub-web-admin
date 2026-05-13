@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { ConsentModal } from './components/ConsentModal'
 import { MetricsGrid } from './components/MetricsGrid'
@@ -12,7 +12,9 @@ import type { AdminSectionId, AdminSession, ConsoleAction } from './types/admin'
 
 const CONSOLE_PATH = '/console'
 const SIGN_IN_PATH = '/sign-in'
-const SIGN_IN_PATHS = new Set([SIGN_IN_PATH, '/login'])
+const LOCATION_CHANGE_EVENT = 'sportgearhub-location-change'
+const SIGN_IN_PATHS = new Set([SIGN_IN_PATH, '/login', '/auth/sign-in', '/auth/login'])
+const SIGN_OUT_BUTTON_LABELS = new Set(['Вернуться ко входу', 'Back to sign in'])
 
 function getCurrentPath() {
   return window.location.pathname
@@ -25,7 +27,7 @@ function pushPath(path: string) {
 }
 
 function isSignInPath(path: string) {
-  return SIGN_IN_PATHS.has(path)
+  return SIGN_IN_PATHS.has(path.replace(/\/+$/, '') || '/')
 }
 
 function App() {
@@ -36,6 +38,15 @@ function App() {
   const [currentPath, setCurrentPath] = useState(getCurrentPath)
   const currentSection = navItems.find((item) => item.id === activeSection) ?? navItems[0]
 
+  const resetToSignIn = useCallback((path = SIGN_IN_PATH) => {
+    setActiveSession(null)
+    setActiveSection('overview')
+    setPendingAction(null)
+    setSearch('')
+    pushPath(path)
+    setCurrentPath(path)
+  }, [])
+
   useEffect(() => {
     function handlePathChange() {
       const nextPath = getCurrentPath()
@@ -43,19 +54,68 @@ function App() {
       setCurrentPath(nextPath)
 
       if (isSignInPath(nextPath)) {
-        setActiveSession(null)
-        setActiveSection('overview')
-        setPendingAction(null)
-        setSearch('')
+        resetToSignIn(nextPath)
       }
     }
 
+    const originalPushState = window.history.pushState
+    const originalReplaceState = window.history.replaceState
+
+    window.history.pushState = function pushStateWithLocationChange(...args) {
+      const result = originalPushState.apply(this, args)
+      window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT))
+      return result
+    }
+
+    window.history.replaceState = function replaceStateWithLocationChange(...args) {
+      const result = originalReplaceState.apply(this, args)
+      window.dispatchEvent(new Event(LOCATION_CHANGE_EVENT))
+      return result
+    }
+
     window.addEventListener('popstate', handlePathChange)
+    window.addEventListener(LOCATION_CHANGE_EVENT, handlePathChange)
 
     return () => {
+      window.history.pushState = originalPushState
+      window.history.replaceState = originalReplaceState
       window.removeEventListener('popstate', handlePathChange)
+      window.removeEventListener(LOCATION_CHANGE_EVENT, handlePathChange)
     }
-  }, [])
+  }, [resetToSignIn])
+
+  useEffect(() => {
+    function handleDocumentClick(event: MouseEvent) {
+      const target = event.target
+
+      if (!(target instanceof Element)) {
+        return
+      }
+
+      const trigger = target.closest('a, button')
+
+      if (!(trigger instanceof HTMLElement)) {
+        return
+      }
+
+      const label = trigger.textContent?.replace(/\s+/g, ' ').trim()
+      const isSignOutLabel = label ? SIGN_OUT_BUTTON_LABELS.has(label) : false
+      const isSignInLink = trigger instanceof HTMLAnchorElement ? isSignInPath(new URL(trigger.href).pathname) : false
+
+      if (!isSignOutLabel && !isSignInLink) {
+        return
+      }
+
+      event.preventDefault()
+      resetToSignIn()
+    }
+
+    document.addEventListener('click', handleDocumentClick)
+
+    return () => {
+      document.removeEventListener('click', handleDocumentClick)
+    }
+  }, [resetToSignIn])
 
   const filteredQueues = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -97,12 +157,7 @@ function App() {
   }
 
   function signOut() {
-    setActiveSession(null)
-    setActiveSection('overview')
-    setPendingAction(null)
-    setSearch('')
-    pushPath(SIGN_IN_PATH)
-    setCurrentPath(SIGN_IN_PATH)
+    resetToSignIn()
   }
 
   if (!activeSession || isSignInPath(currentPath)) {

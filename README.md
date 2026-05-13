@@ -16,6 +16,10 @@ npm run lint
 npm run build
 ```
 
+## Integration
+
+See [docs/integration.md](docs/integration.md) for API wiring and admin-specific auth payloads.
+
 ## Deployment
 
 Production deployment follows the provider app pattern: pushing the `production` branch triggers GitHub Actions to build the Vite app, publish a GHCR Docker image, upload `docker-compose.yml` to the target server, and restart Docker Compose under `/opt/sportgearhub-web-admin`.

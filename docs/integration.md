@@ -1,6 +1,8 @@
-# Admin Auth API Notes
+# Sportgearhub Admin Web Integration
 
-This document tracks admin web integration details that are easy to drift from the API contract.
+This is the single structured API integration file for the admin web console.
+
+Use this file for endpoint wiring and admin-specific auth payloads. Keep deployment details in `docs/deployment.md`.
 
 ## App Identity
 
