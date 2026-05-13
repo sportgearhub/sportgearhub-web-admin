@@ -17,6 +17,7 @@ permissions:
 env:
   APP_DIR: ${{ vars.APP_DIR || '/opt/sportgearhub-web-admin' }}
   IMAGE_NAME: ghcr.io/${{ github.repository }}
+  WEB_ADMIN_IMAGE: ${{ vars.WEB_ADMIN_IMAGE || 'production' }}
 
 jobs:
   build-and-deploy:
@@ -67,14 +68,14 @@ jobs:
           set -euo pipefail
           docker build \
             --tag "$IMAGE_NAME:${GITHUB_SHA}" \
-            --tag "$IMAGE_NAME:production" \
+            --tag "$IMAGE_NAME:$WEB_ADMIN_IMAGE" \
             .
 
       - name: Push Docker image
         run: |
           set -euo pipefail
           docker push "$IMAGE_NAME:${GITHUB_SHA}"
-          docker push "$IMAGE_NAME:production"
+          docker push "$IMAGE_NAME:$WEB_ADMIN_IMAGE"
 
       - name: Configure SSH
         env:
@@ -107,7 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "APP_DIR='$APP_DIR' WEB_ADMIN_HTTP_PORT='$WEB_ADMIN_HTTP_PORT' WEB_ADMIN_IMAGE='$IMAGE_NAME:production' bash -s" <<'EOF'
+            "APP_DIR='$APP_DIR' WEB_ADMIN_HTTP_PORT='$WEB_ADMIN_HTTP_PORT' WEB_ADMIN_IMAGE='$WEB_ADMIN_IMAGE' bash -s" <<'EOF'
           set -euo pipefail
 
           mkdir -p "$APP_DIR"
