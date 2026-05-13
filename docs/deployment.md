@@ -23,7 +23,6 @@ Optional GitHub variables:
 
 - `DEPLOY_PORT`: SSH port, defaults to `22`
 - `APP_DIR`: target app directory, defaults to `/opt/sportgearhub-web-admin`
-- `WEB_ADMIN_HTTP_PORT`: host HTTP port, defaults to `8081`
 - `WEB_ADMIN_IMAGE`: Docker image tag, defaults to `production`
 
 The deploy user must be able to write to `/opt/sportgearhub-web-admin` and run Docker Compose. The target host must have an external Docker network named `apps-proxy` so Nginx can proxy to the app container. The target host must also be able to pull `ghcr.io/sportgearhub/sportgearhub-web-admin:production`.
@@ -61,7 +60,5 @@ docker-compose up -d --remove-orphans
 The Docker service and container name are `sportgearhub-web-admin`.
 
 From Nginx on the same Docker network, set `ADMIN_UPSTREAM` to `http://sportgearhub-web-admin:80`.
-
-Set `WEB_ADMIN_HTTP_PORT` to change the host port. The default is `8081`.
 
 Set `WEB_ADMIN_IMAGE` to change the deployed image tag. Use a tag value such as `production` or `latest`; the Compose file expands it to `ghcr.io/sportgearhub/sportgearhub-web-admin:<tag>`.

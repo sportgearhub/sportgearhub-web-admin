@@ -3,8 +3,6 @@ services:
     container_name: sportgearhub-web-admin
     image: "ghcr.io/sportgearhub/sportgearhub-web-admin:${WEB_ADMIN_IMAGE:-production}"
     restart: unless-stopped
-    ports:
-      - "${WEB_ADMIN_HTTP_PORT:-8081}:80"
     networks:
       apps-proxy:
         aliases:

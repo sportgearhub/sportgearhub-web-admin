@@ -104,11 +104,10 @@ jobs:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_PORT: ${{ vars.DEPLOY_PORT || '22' }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-          WEB_ADMIN_HTTP_PORT: ${{ vars.WEB_ADMIN_HTTP_PORT || '8081' }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
-            "APP_DIR='$APP_DIR' WEB_ADMIN_HTTP_PORT='$WEB_ADMIN_HTTP_PORT' WEB_ADMIN_IMAGE='$WEB_ADMIN_IMAGE' bash -s" <<'EOF'
+            "APP_DIR='$APP_DIR' WEB_ADMIN_IMAGE='$WEB_ADMIN_IMAGE' bash -s" <<'EOF'
           set -euo pipefail
 
           mkdir -p "$APP_DIR"
@@ -116,7 +115,6 @@ jobs:
           rm -f "$APP_DIR/compose.yml"
 
           cat > "$APP_DIR/.env" <<ENVEOF
-          WEB_ADMIN_HTTP_PORT=$WEB_ADMIN_HTTP_PORT
           WEB_ADMIN_IMAGE=$WEB_ADMIN_IMAGE
           ENVEOF
 
