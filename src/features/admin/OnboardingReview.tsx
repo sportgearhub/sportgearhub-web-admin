@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { OnboardingApplication, Severity } from '../../types/admin'
 import {
   getProviderOnboarding,
+  getProviderOnboardingQueue,
   postProviderOnboardingAction,
+  type PaginationResponse,
   type ProviderOnboardingAction,
   type ProviderOnboardingResponse,
+  type ProviderOnboardingSummaryResponse,
 } from './adminApi'
 
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -13,8 +16,38 @@ const REVIEW_ACTIONS: Array<{ code: ProviderOnboardingAction; label: string; ton
   { code: 'request_changes', label: 'Запросить изменения' },
   { code: 'reject', label: 'Отклонить', tone: 'danger' },
 ]
+const DEFAULT_PAGINATION: PaginationResponse = {
+  page: 1,
+  pageSize: 20,
+  totalItems: 0,
+  totalPages: 0,
+  hasPreviousPage: false,
+  hasNextPage: false,
+}
 
-function formatDate(value?: string) {
+type SortDirection = 'asc' | 'desc' | ''
+type OnboardingColumnKey = 'displayName' | 'legalName' | 'taxNumber' | 'status' | 'submittedAt'
+type ColumnConfig = {
+  key: OnboardingColumnKey
+  label: string
+  field: string
+  filterKind: 'text' | 'status' | 'date'
+}
+type ColumnState = Record<OnboardingColumnKey, { filter: string; sort: SortDirection }>
+
+const COLUMNS: ColumnConfig[] = [
+  { key: 'displayName', label: 'Провайдер', field: 'displayName', filterKind: 'text' },
+  { key: 'legalName', label: 'Юр. название', field: 'legalName', filterKind: 'text' },
+  { key: 'taxNumber', label: 'ИНН', field: 'taxNumber', filterKind: 'text' },
+  { key: 'status', label: 'Статус', field: 'status', filterKind: 'status' },
+  { key: 'submittedAt', label: 'Подано', field: 'submittedAt', filterKind: 'date' },
+]
+const EMPTY_COLUMN_STATE = COLUMNS.reduce((state, column) => {
+  state[column.key] = { filter: '', sort: '' }
+  return state
+}, {} as ColumnState)
+
+function formatDate(value?: string | null) {
   if (!value) {
     return 'не указано'
   }
@@ -32,6 +65,10 @@ function formatDate(value?: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function escapeRsqlValue(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 
 function getStatusSeverity(status: string): Severity {
@@ -54,6 +91,67 @@ function getStatusSeverity(status: string): Severity {
 
 function isReadyChecklistStatus(status?: number) {
   return status === 1
+}
+
+function buildFilterExpression(columnState: ColumnState) {
+  return COLUMNS.flatMap((column) => {
+    const value = columnState[column.key].filter.trim()
+
+    if (!value) {
+      return []
+    }
+
+    if (column.filterKind === 'text') {
+      return `${column.field}=="*${escapeRsqlValue(value)}*"`
+    }
+
+    return `${column.field}=="${escapeRsqlValue(value)}"`
+  }).join(';')
+}
+
+function buildSortExpression(columnState: ColumnState) {
+  return COLUMNS.flatMap((column) => {
+    const direction = columnState[column.key].sort
+
+    if (!direction) {
+      return []
+    }
+
+    return direction === 'desc' ? `-${column.field}` : column.field
+  }).join(',')
+}
+
+function getSortLabel(direction: SortDirection) {
+  if (direction === 'asc') {
+    return 'по возрастанию'
+  }
+
+  if (direction === 'desc') {
+    return 'по убыванию'
+  }
+
+  return 'без сортировки'
+}
+
+function mapSummaryResponse(response: ProviderOnboardingSummaryResponse): OnboardingApplication {
+  return {
+    id: response.applicationId,
+    providerId: response.providerId ?? undefined,
+    isApiBacked: true,
+    providerName: response.displayName ?? 'Заявка провайдера',
+    applicantName: 'Не указано',
+    applicantEmail: response.contactEmail ?? 'Не указан',
+    submittedAt: formatDate(response.submittedAt ?? response.updatedAt),
+    status: response.status,
+    priority: getStatusSeverity(response.status),
+    legalName: response.legalName ?? 'Не указано',
+    legalCountryCode: response.legalCountryCode ?? undefined,
+    legalForm: response.legalForm ?? undefined,
+    taxId: response.taxNumber ?? 'Не указан',
+    city: 'Не указан',
+    reviewNote: response.providerId ? 'Профиль провайдера уже создан.' : 'Профиль провайдера будет создан после одобрения.',
+    checklist: [],
+  }
 }
 
 function mapOnboardingResponse(response: ProviderOnboardingResponse, fallback?: OnboardingApplication): OnboardingApplication {
@@ -109,10 +207,52 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function OnboardingReview() {
   const [applications, setApplications] = useState<OnboardingApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<OnboardingApplication | null>(null)
-  const [lookupId, setLookupId] = useState('')
+  const [columnState, setColumnState] = useState<ColumnState>(EMPTY_COLUMN_STATE)
+  const [activeColumn, setActiveColumn] = useState<ColumnConfig | null>(null)
+  const [filterDraft, setFilterDraft] = useState('')
+  const [sortDraft, setSortDraft] = useState<SortDirection>('')
+  const [pagination, setPagination] = useState<PaginationResponse>(DEFAULT_PAGINATION)
+  const [pageSize, setPageSize] = useState(20)
   const [lookupError, setLookupError] = useState('')
   const [detailError, setDetailError] = useState('')
-  const [isLookupLoading, setIsLookupLoading] = useState(false)
+  const [isQueueLoading, setIsQueueLoading] = useState(true)
+
+  const filterExpression = useMemo(() => buildFilterExpression(columnState), [columnState])
+  const sortExpression = useMemo(() => buildSortExpression(columnState), [columnState])
+
+  const loadQueue = useCallback(
+    async (page = 1) => {
+      try {
+        const response = await getProviderOnboardingQueue({
+          filter: filterExpression,
+          sort: sortExpression || '-submittedAt',
+          page,
+          pageSize,
+        })
+        setLookupError('')
+        setDetailError('')
+        setApplications(response.items.map(mapSummaryResponse))
+        setPagination(response.pagination)
+      } catch (error) {
+        setLookupError(getErrorMessage(error, 'Не удалось загрузить заявки'))
+        setApplications([])
+        setPagination(DEFAULT_PAGINATION)
+      } finally {
+        setIsQueueLoading(false)
+      }
+    },
+    [filterExpression, pageSize, sortExpression],
+  )
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadQueue(1)
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [loadQueue])
 
   async function loadApplication(applicationId: string, fallback?: OnboardingApplication) {
     const response = await getProviderOnboarding(applicationId)
@@ -121,30 +261,6 @@ export function OnboardingReview() {
     setApplications((currentApplications) => upsertApplication(currentApplications, application))
     setSelectedApplication(application)
     return application
-  }
-
-  async function submitLookup(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const applicationId = lookupId.trim()
-
-    if (!GUID_PATTERN.test(applicationId)) {
-      setLookupError('Укажите корректный номер заявки')
-      return
-    }
-
-    setLookupError('')
-    setDetailError('')
-    setIsLookupLoading(true)
-
-    try {
-      await loadApplication(applicationId)
-      setLookupId('')
-    } catch (error) {
-      setLookupError(getErrorMessage(error, 'Не удалось загрузить заявку'))
-    } finally {
-      setIsLookupLoading(false)
-    }
   }
 
   async function openApplication(application: OnboardingApplication) {
@@ -169,6 +285,38 @@ export function OnboardingReview() {
     }
   }
 
+  function openColumnDialog(column: ColumnConfig) {
+    const state = columnState[column.key]
+
+    setActiveColumn(column)
+    setFilterDraft(state.filter)
+    setSortDraft(state.sort)
+  }
+
+  function applyColumnDialog() {
+    if (!activeColumn) {
+      return
+    }
+
+    setColumnState((currentState) => ({
+      ...currentState,
+      [activeColumn.key]: {
+        filter: filterDraft,
+        sort: sortDraft,
+      },
+    }))
+    setActiveColumn(null)
+  }
+
+  function resetColumnDialog() {
+    setFilterDraft('')
+    setSortDraft('')
+  }
+
+  function clearAllFilters() {
+    setColumnState(EMPTY_COLUMN_STATE)
+  }
+
   function updateApplication(application: OnboardingApplication) {
     setApplications((currentApplications) => upsertApplication(currentApplications, application))
     setSelectedApplication(application)
@@ -177,20 +325,22 @@ export function OnboardingReview() {
   return (
     <>
       <section className="panel wide">
-        <form className="onboarding-lookup" onSubmit={submitLookup}>
-          <label>
-            <span>Найти заявку</span>
-            <input
-              value={lookupId}
-              onChange={(event) => setLookupId(event.target.value)}
-              placeholder="Номер заявки"
-              aria-label="Номер заявки"
-            />
-          </label>
-          <button type="submit" className="secondary-action" disabled={isLookupLoading}>
-            {isLookupLoading ? 'Загрузка...' : 'Загрузить'}
+        <div className="table-controls">
+          <button type="button" className="secondary-action" onClick={() => void loadQueue(pagination.page)} disabled={isQueueLoading}>
+            {isQueueLoading ? 'Обновляем...' : 'Обновить'}
           </button>
-        </form>
+          <button type="button" className="secondary-action" onClick={clearAllFilters}>
+            Сбросить фильтры
+          </button>
+          <label>
+            <span>Строк</span>
+            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        </div>
 
         {lookupError ? <p className="panel-error">{lookupError}</p> : null}
 
@@ -198,11 +348,21 @@ export function OnboardingReview() {
           <table className="data-table onboarding-table">
             <thead>
               <tr>
-                <th>Провайдер</th>
-                <th>Заявитель</th>
-                <th>Город</th>
-                <th>Статус</th>
-                <th>Подано</th>
+                {COLUMNS.map((column) => {
+                  const state = columnState[column.key]
+                  const hasFilter = Boolean(state.filter.trim())
+
+                  return (
+                    <th key={column.key}>
+                      <button type="button" className="column-control-button" onClick={() => openColumnDialog(column)}>
+                        <span>{column.label}</span>
+                        <small>
+                          {hasFilter ? 'фильтр' : 'все'} · {getSortLabel(state.sort)}
+                        </small>
+                      </button>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -221,25 +381,52 @@ export function OnboardingReview() {
                       <small>Заявка {application.id}</small>
                     </td>
                     <td>
-                      <strong>{application.applicantName}</strong>
-                      <small>{application.applicantEmail}</small>
+                      <strong>{application.legalName}</strong>
+                      <small>{application.legalForm ?? 'Форма не указана'}</small>
                     </td>
-                    <td>{application.city}</td>
+                    <td>{application.taxId}</td>
                     <td>{application.status}</td>
                     <td>{application.submittedAt}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="empty-table-cell">
-                    Введите номер заявки, чтобы открыть ее для проверки.
+                  <td colSpan={COLUMNS.length} className="empty-table-cell">
+                    {isQueueLoading ? 'Загружаем заявки...' : 'Заявок для проверки нет.'}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        <footer className="table-pagination">
+          <span>
+            Страница {pagination.page || 1} из {Math.max(pagination.totalPages, 1)} · всего {pagination.totalItems}
+          </span>
+          <div>
+            <button type="button" className="secondary-action" onClick={() => void loadQueue(pagination.page - 1)} disabled={!pagination.hasPreviousPage}>
+              Назад
+            </button>
+            <button type="button" className="secondary-action" onClick={() => void loadQueue(pagination.page + 1)} disabled={!pagination.hasNextPage}>
+              Вперед
+            </button>
+          </div>
+        </footer>
       </section>
+
+      {activeColumn ? (
+        <ColumnFilterModal
+          column={activeColumn}
+          filter={filterDraft}
+          sort={sortDraft}
+          onFilterChange={setFilterDraft}
+          onSortChange={setSortDraft}
+          onApply={applyColumnDialog}
+          onReset={resetColumnDialog}
+          onClose={() => setActiveColumn(null)}
+        />
+      ) : null}
 
       {selectedApplication ? (
         <OnboardingDetailModal
@@ -250,6 +437,63 @@ export function OnboardingReview() {
         />
       ) : null}
     </>
+  )
+}
+
+function ColumnFilterModal({
+  column,
+  filter,
+  sort,
+  onFilterChange,
+  onSortChange,
+  onApply,
+  onReset,
+  onClose,
+}: {
+  column: ColumnConfig
+  filter: string
+  sort: SortDirection
+  onFilterChange: (value: string) => void
+  onSortChange: (value: SortDirection) => void
+  onApply: () => void
+  onReset: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="column-filter-modal" role="dialog" aria-modal="true" aria-labelledby="column-filter-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <h2 id="column-filter-title">{column.label}</h2>
+          <button type="button" className="modal-close" onClick={onClose}>
+            Закрыть
+          </button>
+        </header>
+
+        <div className="column-filter-body">
+          <label>
+            <span>Фильтр</span>
+            <input value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus />
+          </label>
+          <label>
+            <span>Сортировка</span>
+            <select value={sort} onChange={(event) => onSortChange(event.target.value as SortDirection)}>
+              <option value="">Без сортировки</option>
+              <option value="asc">По возрастанию</option>
+              <option value="desc">По убыванию</option>
+            </select>
+          </label>
+        </div>
+
+        <footer>
+          <button type="button" className="secondary-action" onClick={onReset}>
+            Очистить
+          </button>
+          <button type="button" className="primary-action" onClick={onApply}>
+            Применить
+          </button>
+        </footer>
+      </section>
+    </div>
   )
 }
 

@@ -456,31 +456,136 @@
 }
 
 .onboarding-table {
-  min-width: 860px;
+  min-width: 980px;
 }
 
-.onboarding-lookup {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto;
+.table-controls,
+.table-pagination {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  align-items: end;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.onboarding-lookup label,
+.table-controls label {
+  display: grid;
+  gap: 5px;
+  min-width: 96px;
+}
+
+.table-controls label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.table-controls select,
+.column-filter-body input,
+.column-filter-body select,
+.review-decision-panel label {
+  width: 100%;
+}
+
+.table-controls select,
+.column-filter-body input,
+.column-filter-body select {
+  min-height: 42px;
+  padding: 9px 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+}
+
+.table-pagination {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.table-pagination div {
+  display: flex;
+  gap: 8px;
+}
+
+.column-control-button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+
+.column-control-button span,
+.column-control-button small {
+  display: block;
+}
+
+.column-control-button small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.column-control-button:hover span {
+  color: var(--accent);
+}
+
+.column-filter-modal {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(23, 32, 38, 0.28);
+}
+
+.column-filter-modal header,
+.column-filter-modal footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 18px;
+}
+
+.column-filter-modal header {
+  border-bottom: 1px solid var(--border);
+}
+
+.column-filter-modal footer {
+  border-top: 1px solid var(--border);
+}
+
+.column-filter-modal h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.column-filter-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.column-filter-body label,
 .review-decision-panel label {
   display: grid;
   gap: 6px;
 }
 
-.onboarding-lookup label span,
+.column-filter-body label span,
 .review-decision-panel label span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
 }
 
-.onboarding-lookup input,
 .review-decision-panel input,
 .review-decision-panel textarea {
   width: 100%;
@@ -493,7 +598,8 @@
   outline: 0;
 }
 
-.onboarding-lookup input:focus,
+.column-filter-body input:focus,
+.column-filter-body select:focus,
 .review-decision-panel input:focus,
 .review-decision-panel textarea:focus {
   border-color: #8ccfba;

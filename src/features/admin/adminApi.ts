@@ -33,6 +33,42 @@ export type ProviderOnboardingResponse = {
   updatedAt: string
 }
 
+export type ProviderOnboardingSummaryResponse = {
+  applicationId: string
+  applicantUserId?: string | null
+  providerId?: string | null
+  status: string
+  displayName?: string | null
+  legalName?: string | null
+  legalCountryCode?: string | null
+  legalForm?: string | null
+  taxNumber?: string | null
+  contactEmail?: string | null
+  submittedAt?: string | null
+  updatedAt: string
+}
+
+export type PaginationResponse = {
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
+export type ProviderOnboardingQueueResponse = {
+  items: ProviderOnboardingSummaryResponse[]
+  pagination: PaginationResponse
+}
+
+export type ProviderOnboardingQueueQuery = {
+  filter?: string
+  sort?: string
+  page: number
+  pageSize: number
+}
+
 export type ProviderOnboardingAction = 'approve' | 'request_changes' | 'reject'
 
 type ProviderOnboardingActionRequest = {
@@ -87,6 +123,23 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
 
 export function getProviderOnboarding(applicationId: string) {
   return requestJson<ProviderOnboardingResponse>(`/internal/provider-onboarding/${encodeURIComponent(applicationId)}`)
+}
+
+export function getProviderOnboardingQueue(query: ProviderOnboardingQueueQuery) {
+  const searchParams = new URLSearchParams()
+
+  if (query.filter) {
+    searchParams.set('filter', query.filter)
+  }
+
+  if (query.sort) {
+    searchParams.set('sort', query.sort)
+  }
+
+  searchParams.set('page', String(query.page))
+  searchParams.set('pageSize', String(query.pageSize))
+
+  return requestJson<ProviderOnboardingQueueResponse>(`/internal/provider-onboarding?${searchParams.toString()}`)
 }
 
 export function postProviderOnboardingAction(applicationId: string, request: ProviderOnboardingActionRequest) {
