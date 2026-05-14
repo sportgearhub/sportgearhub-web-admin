@@ -49,7 +49,7 @@ https://admin.sportgearhub.ru/console
 
 The fallback sign-in aliases `/login`, `/auth/sign-in`, and `/auth/login` are accepted by the frontend and should reset the active admin session. New API-generated links should prefer `/sign-in`.
 
-The frontend calls auth endpoints against same-origin `/api` by default. Set `VITE_API_BASE_URL` only when an environment needs an explicit API origin; the value must not change the admin email link domain.
+The frontend calls auth endpoints against `VITE_API_BASE_URL` when it is set. Production should build with `VITE_API_BASE_URL=https://api.sportgearhub.ru`; the app also falls back to that API origin at runtime when served from `admin.sportgearhub.ru`. The value must not change the admin email link domain.
 
 Admin OpenAPI document:
 

@@ -1,6 +1,5 @@
+import { API_BASE_URL } from '../../config/api'
 import { getAuthorizationHeader } from '../auth/authTokenStore'
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 
 type ApiErrorBody = {
   message?: string
