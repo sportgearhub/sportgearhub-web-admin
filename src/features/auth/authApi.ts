@@ -244,7 +244,7 @@ export function requestPasswordReset(email: string) {
 export function resetPassword(token: string, password: string) {
   return postJson('/api/v1/auth/password/reset', {
     token,
-    password,
+    newPassword: password,
   })
 }
 

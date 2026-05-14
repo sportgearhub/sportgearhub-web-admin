@@ -49,7 +49,7 @@ https://admin.sportgearhub.ru/console
 
 The fallback sign-in aliases `/login`, `/auth/sign-in`, and `/auth/login` are accepted by the frontend and should reset the active admin session. New API-generated links should prefer `/sign-in`.
 
-The frontend calls auth endpoints against same-origin `/api` by default. Set `VITE_API_BASE_URL` only when an environment needs an explicit API origin; the value must not change the admin email link domain.
+The frontend calls API endpoints against same-origin paths by default. Set `VITE_API_BASE_URL` when an environment needs an explicit API origin or when the admin host does not proxy `/api` and `/internal` to the API. The value must not change the admin email link domain.
 
 Admin OpenAPI document:
 
@@ -58,6 +58,8 @@ Admin OpenAPI document:
 ```
 
 The Swagger UI is still served at `/swagger` when the API enables Swagger.
+
+The generated OpenAPI document lists the OIDC token endpoints as `204` because OpenIddict owns the form-encoded token exchange at runtime. Use the token envelope documented below for frontend integration.
 
 Backend persistence is organized by PostgreSQL bounded-context schemas: `auth`, `catalog`, `provider`, `inventory`, `booking`, `payments`, `operations`, and `equipment`. This is operational structure only and does not change admin route paths.
 
@@ -80,6 +82,8 @@ password=<admin-password>
 scope=openid profile email offline_access roles internal_api
 ```
 
+Do not send JSON `{ "email": "...", "password": "..." }` to `/api/v1/auth/login`. That path is now an OIDC token endpoint and rejects `application/json` with `invalid_request`.
+
 The response is the OpenIddict token envelope:
 
 ```json
@@ -99,6 +103,15 @@ Authorization: Bearer <access_token>
 ```
 
 `/internal/*` requires both the `Admin` role and the `internal_api` scope. Cookie-only login is not enough for admin review APIs.
+
+The generated OpenAPI document also includes:
+
+```http
+POST /api/v1/auth/session-login
+POST /api/auth/session-login
+```
+
+Those endpoints accept the legacy JSON local-login payload and return an auth user response for cookie/session flows. The admin web app must not use them for the main sign-in flow because they do not provide the bearer token required by `/internal/*`.
 
 ### Refresh Token
 
@@ -155,6 +168,8 @@ Reset request:
   "newPassword": "new-admin-password"
 }
 ```
+
+Use the `newPassword` property name from the OpenAPI schema. Do not send `password` for reset completion.
 
 ## Email Verification
 
@@ -259,23 +274,433 @@ Supported actions are `approve`, `request_changes`, and `reject`. `request_chang
 
 ## Equipment Taxonomy Review
 
-The API now has provider-facing equipment taxonomy and brand lookup endpoints for inventory intake:
+The admin app owns operational review of equipment taxonomy data that providers can use in inventory intake. Category schemas are read-only in this slice; brand review is writable.
 
 ```http
-GET /api/v1/provider/equipment-categories
-GET /api/v1/provider/equipment-categories/{categorySlug}/attributes
-GET /api/v1/provider/equipment-brands/suggestions
-POST /api/v1/provider/equipment-brands
+GET /internal/equipment-categories?locale=ru-RU
+GET /internal/equipment-categories/{categorySlug}/attributes?locale=ru-RU
+GET /internal/equipment-brands/options
+GET /internal/equipment-brands?status=pending_review&query=North&page=1&pageSize=20
+GET /internal/equipment-brands/{brandId}
+GET /internal/equipment-brands/{brandId}/merge-candidates?limit=10
+PATCH /internal/equipment-brands/{brandId}
+POST /internal/equipment-brands/{brandId}/actions
 ```
 
-The first seeded category is `bicycle`. Provider-created missing brands are created as `pending_review` so they can be used immediately by provider inventory flows.
+All endpoints require:
 
-Current admin status:
+```http
+Authorization: Bearer <access_token>
+```
 
-- there is no admin management endpoint yet for equipment schemas or pending brands
-- do not hardcode admin UI against provider endpoints for taxonomy management
-- the intended next admin slice is a review queue for pending brands and aliases, with approve/merge/reject actions
-- equipment tables live in the `equipment` PostgreSQL schema for easier operational inspection
+The token must have the `Admin` role and `internal_api` scope.
+
+### Equipment Categories
+
+Use categories to show what provider inventory schemas currently exist.
+
+```http
+GET /internal/equipment-categories?locale=ru-RU
+```
+
+Response:
+
+```json
+[
+  {
+    "categoryId": "00000000-0000-0000-0000-000000000001",
+    "slug": "bicycle",
+    "label": "Велосипед",
+    "labels": {
+      "ru-RU": "Велосипед",
+      "en-US": "Bicycle"
+    },
+    "resourceType": "equipment",
+    "capacityMode": "inventory",
+    "status": "active",
+    "sortOrder": 10
+  }
+]
+```
+
+The first seeded category is `bicycle`. The admin UI should not provide category editing yet unless a later API slice adds schema write endpoints.
+
+### Equipment Attribute Schema
+
+Use the schema endpoint to inspect which fields provider inventory forms are built from.
+
+```http
+GET /internal/equipment-categories/bicycle/attributes?locale=ru-RU
+```
+
+Response shape:
+
+```json
+{
+  "category": {
+    "categoryId": "00000000-0000-0000-0000-000000000001",
+    "slug": "bicycle",
+    "label": "Велосипед",
+    "resourceType": "equipment",
+    "capacityMode": "inventory",
+    "status": "active",
+    "sortOrder": 10
+  },
+  "attributes": [
+    {
+      "attributeId": "00000000-0000-0000-0000-000000000101",
+      "key": "brand",
+      "label": "Бренд",
+      "labels": {
+        "ru-RU": "Бренд",
+        "en-US": "Brand"
+      },
+      "valueType": "reference",
+      "unit": null,
+      "unitLabel": null,
+      "referenceType": "equipment_brand",
+      "requiredOn": ["variant"],
+      "appliesTo": ["variant"],
+      "visibleWhen": [],
+      "filterable": true,
+      "comparable": true,
+      "searchable": true,
+      "sortOrder": 10,
+      "allowedValues": []
+    }
+  ]
+}
+```
+
+Field meaning:
+
+- `key`: stable machine key.
+- `valueType`: input type, including `string`, `enum`, `decimal`, `integer`, `boolean`, `datetime`, and `reference`.
+- `referenceType: "equipment_brand"`: provider forms use the brand directory.
+- `requiredOn`: scopes where the value is mandatory, for example `variant` or `unit`.
+- `appliesTo`: scopes where the value belongs.
+- `visibleWhen`: conditional rule. Example: show `motor_power_w` only when `bike_type` is `e_bike`.
+- `allowedValues`: enum options; admins should display `label` but reason about stable `valueKey`.
+
+For `bicycle`, the provider-facing form is expected to include fields such as `brand`, `model`, `bike_type`, `frame_size`, `wheel_size`, `brake_type`, `drivetrain_type`, `suspension_type`, and conditional electric/suspension specs.
+
+### Brand Review Queue
+
+Providers can request missing brands from their inventory flow. The API creates these brands as `pending_review` so providers can continue setup immediately. Admin review canonicalizes the directory for future aggregation, filtering, and search.
+
+Load frontend options before rendering the review UI:
+
+```http
+GET /internal/equipment-brands/options
+```
+
+Response:
+
+```json
+{
+  "statuses": [
+    { "value": "pending_review", "label": "Pending review" },
+    { "value": "approved", "label": "Approved" },
+    { "value": "merged", "label": "Merged" },
+    { "value": "rejected", "label": "Rejected" },
+    { "value": "archived", "label": "Archived" }
+  ],
+  "actions": [
+    {
+      "value": "approve",
+      "label": "Approve",
+      "requiresReasonCode": false,
+      "requiresTargetBrandId": false,
+      "allowedSourceStatuses": ["pending_review"]
+    },
+    {
+      "value": "merge",
+      "label": "Merge",
+      "requiresReasonCode": true,
+      "requiresTargetBrandId": true,
+      "allowedSourceStatuses": ["pending_review", "approved"]
+    }
+  ],
+  "reasonCodes": [
+    {
+      "value": "duplicate_brand",
+      "label": "Duplicate brand",
+      "appliesToActions": ["merge"]
+    }
+  ],
+  "fields": [
+    {
+      "key": "canonicalName",
+      "label": "Canonical name",
+      "filterable": false,
+      "searchable": true,
+      "sortable": true
+    }
+  ],
+  "pagination": {
+    "defaultPage": 1,
+    "defaultPageSize": 20,
+    "maxPageSize": 100
+  }
+}
+```
+
+List brands:
+
+```http
+GET /internal/equipment-brands?status=pending_review&query=North&page=1&pageSize=20
+```
+
+Query params:
+
+- `status`: optional exact status filter.
+- `query`: optional search over canonical and normalized brand names.
+- `page`: defaults to `1`.
+- `pageSize`: defaults to `20`, max `100`.
+
+Statuses:
+
+- `approved`: canonical brand available normally.
+- `pending_review`: provider-created brand waiting for admin decision.
+- `merged`: duplicate brand merged into another brand.
+- `rejected`: invalid brand request.
+- `archived`: retired brand record.
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "brandId": "00000000-0000-0000-0000-000000000301",
+      "canonicalName": "NorthPeak",
+      "normalizedName": "NORTHPEAK",
+      "status": "pending_review",
+      "website": null,
+      "countryCode": "RU",
+      "createdByProviderId": "00000000-0000-0000-0000-000000000401",
+      "mergedIntoBrandId": null,
+      "reviewedByUserId": null,
+      "reviewReasonCode": null,
+      "reviewComments": null,
+      "reviewedAt": null,
+      "createdAt": "2026-05-14T09:00:00Z",
+      "updatedAt": "2026-05-14T09:00:00Z",
+      "aliases": [
+        {
+          "aliasId": "00000000-0000-0000-0000-000000000302",
+          "alias": "NorthPeak",
+          "normalizedAlias": "NORTHPEAK",
+          "locale": null,
+          "source": "provider",
+          "status": "pending_review",
+          "createdAt": "2026-05-14T09:00:00Z",
+          "updatedAt": "2026-05-14T09:00:00Z"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "byStatus": {
+      "pending_review": 2,
+      "approved": 1,
+      "merged": 1
+    }
+  },
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasPreviousPage": false,
+    "hasNextPage": false
+  }
+}
+```
+
+Get brand detail:
+
+```http
+GET /internal/equipment-brands/{brandId}
+```
+
+Use detail when opening a review drawer/page. The response is the same brand object from the list item.
+
+Patch brand metadata before review:
+
+```http
+PATCH /internal/equipment-brands/{brandId}
+```
+
+Request:
+
+```json
+{
+  "canonicalName": "NorthPeak",
+  "website": "https://example.com",
+  "countryCode": "RU",
+  "comments": "Normalized provider-entered name before approval."
+}
+```
+
+Response:
+
+```json
+{
+  "brand": {
+    "brandId": "00000000-0000-0000-0000-000000000301",
+    "canonicalName": "NorthPeak",
+    "normalizedName": "NORTHPEAK",
+    "status": "pending_review",
+    "website": "https://example.com",
+    "countryCode": "RU",
+    "createdByProviderId": "00000000-0000-0000-0000-000000000401",
+    "mergedIntoBrandId": null,
+    "reviewedByUserId": "00000000-0000-0000-0000-000000000501",
+    "reviewReasonCode": null,
+    "reviewComments": "Normalized provider-entered name before approval.",
+    "reviewedAt": "2026-05-14T09:04:00Z",
+    "createdAt": "2026-05-14T09:00:00Z",
+    "updatedAt": "2026-05-14T09:04:00Z",
+    "aliases": []
+  }
+}
+```
+
+Patch rules:
+
+- `canonicalName` is normalized by the API and checked against existing brands and aliases.
+- Empty `website` or `countryCode` clears the value.
+- `countryCode` is uppercased.
+- When `canonicalName` changes, the API adds an approved admin alias for the new canonical value.
+- Use patch before `approve` when the provider-created name is valid but needs cleanup.
+
+Get merge candidates:
+
+```http
+GET /internal/equipment-brands/{brandId}/merge-candidates?limit=10
+```
+
+Optional query:
+
+```http
+GET /internal/equipment-brands/{brandId}/merge-candidates?query=trek&limit=10
+```
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "brandId": "00000000-0000-0000-0000-000000000201",
+      "canonicalName": "Trek",
+      "normalizedName": "TREK",
+      "status": "approved",
+      "confidence": 0.75,
+      "matchKind": "brand_contains",
+      "aliases": ["Trek Bicycle"]
+    }
+  ]
+}
+```
+
+Use candidates to render a safer merge picker. The admin can still search manually by passing `query`.
+
+### Brand Actions
+
+Approve:
+
+```http
+POST /internal/equipment-brands/{brandId}/actions
+```
+
+```json
+{
+  "action": "approve",
+  "reasonCode": null,
+  "comments": "Looks valid."
+}
+```
+
+Reject:
+
+```json
+{
+  "action": "reject",
+  "reasonCode": "not_a_brand",
+  "comments": "This is a shop name, not manufacturer brand."
+}
+```
+
+`reject` requires `reasonCode`.
+
+Archive:
+
+```json
+{
+  "action": "archive",
+  "reasonCode": "obsolete",
+  "comments": null
+}
+```
+
+Merge duplicate:
+
+```json
+{
+  "action": "merge",
+  "targetBrandId": "00000000-0000-0000-0000-000000000201",
+  "reasonCode": "duplicate_brand",
+  "comments": "Duplicate of Trek."
+}
+```
+
+Merge rules:
+
+- `targetBrandId` is required.
+- A brand cannot be merged into itself.
+- The source brand becomes `merged`.
+- Source aliases move to the target brand and become approved admin aliases.
+- Use the brand list `query` filter to find possible merge targets.
+
+Action response:
+
+```json
+{
+  "status": "approved",
+  "action": "approve",
+  "brand": {
+    "brandId": "00000000-0000-0000-0000-000000000301",
+    "canonicalName": "NorthPeak",
+    "normalizedName": "NORTHPEAK",
+    "status": "approved",
+    "website": null,
+    "countryCode": "RU",
+    "createdByProviderId": "00000000-0000-0000-0000-000000000401",
+    "mergedIntoBrandId": null,
+    "reviewedByUserId": "00000000-0000-0000-0000-000000000501",
+    "reviewReasonCode": null,
+    "reviewComments": "Looks valid.",
+    "reviewedAt": "2026-05-14T09:05:00Z",
+    "createdAt": "2026-05-14T09:00:00Z",
+    "updatedAt": "2026-05-14T09:05:00Z",
+    "aliases": []
+  }
+}
+```
+
+Admin UX guidance:
+
+- Default the queue to `status=pending_review`.
+- Load `/internal/equipment-brands/options` once and drive tabs, action buttons, reason dropdowns, and pagination limits from it.
+- Use `summary.byStatus` for tab badges.
+- Show `canonicalName`, `normalizedName`, `countryCode`, `website`, provider id, and aliases.
+- Allow inline cleanup through `PATCH /internal/equipment-brands/{brandId}` before approval.
+- Make merge a deliberate action with target search and confirmation.
+- Do not build schema editing UI yet. The admin API currently exposes read-only categories/attributes plus brand review actions.
+- Equipment tables live in the `equipment` PostgreSQL schema for easier operational inspection.
 
 ## Shared Address Suggestions
 

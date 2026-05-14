@@ -5,6 +5,7 @@ import { MetricsGrid } from './components/MetricsGrid'
 import { OperationalQueues } from './components/OperationalQueues'
 import { navItems, sectionActions } from './data/adminConfig'
 import { DomainPanel } from './features/admin/DomainPanel'
+import { EquipmentTaxonomyReview } from './features/admin/EquipmentTaxonomyReview'
 import { OnboardingReview } from './features/admin/OnboardingReview'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
@@ -239,6 +240,8 @@ function App() {
         <>
           {activeSection === 'onboarding' ? (
             <OnboardingReview />
+          ) : activeSection === 'canonicalization' ? (
+            <EquipmentTaxonomyReview />
           ) : (
             <DomainPanel actions={visibleActions} onAction={requestActionConsent} />
           )}
