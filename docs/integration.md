@@ -59,6 +59,8 @@ Admin OpenAPI document:
 
 The Swagger UI is still served at `/swagger` when the API enables Swagger.
 
+Backend persistence is organized by PostgreSQL bounded-context schemas: `auth`, `catalog`, `provider`, `inventory`, `booking`, `payments`, `operations`, and `equipment`. This is operational structure only and does not change admin route paths.
+
 ## Sign In And Tokens
 
 Admin sign-in uses the OIDC password grant through the login alias:
@@ -254,6 +256,26 @@ Action request:
 ```
 
 Supported actions are `approve`, `request_changes`, and `reject`. `request_changes` and `reject` require `reasonCode`.
+
+## Equipment Taxonomy Review
+
+The API now has provider-facing equipment taxonomy and brand lookup endpoints for inventory intake:
+
+```http
+GET /api/v1/provider/equipment-categories
+GET /api/v1/provider/equipment-categories/{categorySlug}/attributes
+GET /api/v1/provider/equipment-brands/suggestions
+POST /api/v1/provider/equipment-brands
+```
+
+The first seeded category is `bicycle`. Provider-created missing brands are created as `pending_review` so they can be used immediately by provider inventory flows.
+
+Current admin status:
+
+- there is no admin management endpoint yet for equipment schemas or pending brands
+- do not hardcode admin UI against provider endpoints for taxonomy management
+- the intended next admin slice is a review queue for pending brands and aliases, with approve/merge/reject actions
+- equipment tables live in the `equipment` PostgreSQL schema for easier operational inspection
 
 ## Shared Address Suggestions
 
