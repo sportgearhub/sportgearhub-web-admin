@@ -32,11 +32,12 @@ jobs:
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           set -euo pipefail
           missing=0
-          for name in DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_KEY; do
+          for name in DEPLOY_HOST DEPLOY_USER VITE_API_BASE_URL DEPLOY_SSH_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error title=Missing deployment configuration::$name is required"
               missing=1
@@ -54,6 +55,8 @@ jobs:
         run: npm ci
 
       - name: Build dist
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: npm run build
 
       - name: Login to GHCR

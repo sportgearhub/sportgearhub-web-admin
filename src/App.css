@@ -586,6 +586,12 @@
   font-weight: 800;
 }
 
+.column-filter-body label small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .review-decision-panel input,
 .review-decision-panel textarea {
   width: 100%;

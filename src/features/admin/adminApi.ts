@@ -48,6 +48,32 @@ export type ProviderOnboardingSummaryResponse = {
   updatedAt: string
 }
 
+export type ProviderOnboardingFilterFieldResponse = {
+  name: string
+  type: string
+  operators: string[]
+  values?: string[] | null
+}
+
+export type ProviderOnboardingSortFieldResponse = {
+  name: string
+  type: string
+}
+
+export type ProviderOnboardingFilterExampleResponse = {
+  label: string
+  filter: string
+}
+
+export type ProviderOnboardingListOptionsResponse = {
+  filterFields: ProviderOnboardingFilterFieldResponse[]
+  sortFields: ProviderOnboardingSortFieldResponse[]
+  filterExamples: ProviderOnboardingFilterExampleResponse[]
+  sortExamples: string[]
+  defaultFilter: string
+  defaultSort: string
+}
+
 export type PaginationResponse = {
   page: number
   pageSize: number
@@ -123,6 +149,10 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
 
 export function getProviderOnboarding(applicationId: string) {
   return requestJson<ProviderOnboardingResponse>(`/internal/provider-onboarding/${encodeURIComponent(applicationId)}`)
+}
+
+export function getProviderOnboardingOptions() {
+  return requestJson<ProviderOnboardingListOptionsResponse>('/internal/provider-onboarding/options')
 }
 
 export function getProviderOnboardingQueue(query: ProviderOnboardingQueueQuery) {

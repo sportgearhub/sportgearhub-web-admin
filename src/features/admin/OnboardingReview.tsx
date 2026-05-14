@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { OnboardingApplication, Severity } from '../../types/admin'
 import {
   getProviderOnboarding,
+  getProviderOnboardingOptions,
   getProviderOnboardingQueue,
   postProviderOnboardingAction,
   type PaginationResponse,
   type ProviderOnboardingAction,
+  type ProviderOnboardingFilterFieldResponse,
+  type ProviderOnboardingListOptionsResponse,
   type ProviderOnboardingResponse,
+  type ProviderOnboardingSortFieldResponse,
   type ProviderOnboardingSummaryResponse,
 } from './adminApi'
 
@@ -32,6 +36,8 @@ type ColumnConfig = {
   label: string
   field: string
   filterKind: 'text' | 'status' | 'date'
+  filterField?: ProviderOnboardingFilterFieldResponse
+  sortField?: ProviderOnboardingSortFieldResponse
 }
 type ColumnState = Record<OnboardingColumnKey, { filter: string; sort: SortDirection }>
 
@@ -133,6 +139,26 @@ function getSortLabel(direction: SortDirection) {
   return 'без сортировки'
 }
 
+function mergeColumnOptions(options: ProviderOnboardingListOptionsResponse | null) {
+  if (!options) {
+    return COLUMNS
+  }
+
+  return COLUMNS.map((column) => ({
+    ...column,
+    filterField: options.filterFields.find((field) => field.name === column.field),
+    sortField: options.sortFields.find((field) => field.name === column.field),
+  }))
+}
+
+function canFilterColumn(column: ColumnConfig) {
+  return !column.filterField || column.filterField.operators.length > 0
+}
+
+function canSortColumn(column: ColumnConfig) {
+  return !column.sortField || Boolean(column.sortField.name)
+}
+
 function mapSummaryResponse(response: ProviderOnboardingSummaryResponse): OnboardingApplication {
   return {
     id: response.applicationId,
@@ -208,6 +234,7 @@ export function OnboardingReview() {
   const [applications, setApplications] = useState<OnboardingApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<OnboardingApplication | null>(null)
   const [columnState, setColumnState] = useState<ColumnState>(EMPTY_COLUMN_STATE)
+  const [listOptions, setListOptions] = useState<ProviderOnboardingListOptionsResponse | null>(null)
   const [activeColumn, setActiveColumn] = useState<ColumnConfig | null>(null)
   const [filterDraft, setFilterDraft] = useState('')
   const [sortDraft, setSortDraft] = useState<SortDirection>('')
@@ -217,15 +244,18 @@ export function OnboardingReview() {
   const [detailError, setDetailError] = useState('')
   const [isQueueLoading, setIsQueueLoading] = useState(true)
 
+  const columns = useMemo(() => mergeColumnOptions(listOptions), [listOptions])
   const filterExpression = useMemo(() => buildFilterExpression(columnState), [columnState])
   const sortExpression = useMemo(() => buildSortExpression(columnState), [columnState])
+  const activeFilter = filterExpression || listOptions?.defaultFilter || ''
+  const activeSort = sortExpression || listOptions?.defaultSort || '-submittedAt'
 
   const loadQueue = useCallback(
     async (page = 1) => {
       try {
         const response = await getProviderOnboardingQueue({
-          filter: filterExpression,
-          sort: sortExpression || '-submittedAt',
+          filter: activeFilter,
+          sort: activeSort,
           page,
           pageSize,
         })
@@ -241,8 +271,24 @@ export function OnboardingReview() {
         setIsQueueLoading(false)
       }
     },
-    [filterExpression, pageSize, sortExpression],
+    [activeFilter, activeSort, pageSize],
   )
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void getProviderOnboardingOptions()
+        .then((options) => {
+          setListOptions(options)
+        })
+        .catch(() => {
+          setListOptions(null)
+        })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -348,7 +394,7 @@ export function OnboardingReview() {
           <table className="data-table onboarding-table">
             <thead>
               <tr>
-                {COLUMNS.map((column) => {
+                {columns.map((column) => {
                   const state = columnState[column.key]
                   const hasFilter = Boolean(state.filter.trim())
 
@@ -472,11 +518,23 @@ function ColumnFilterModal({
         <div className="column-filter-body">
           <label>
             <span>Фильтр</span>
-            <input value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus />
+            {column.filterField?.values?.length ? (
+              <select value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
+                <option value="">Все</option>
+                {column.filterField.values.map((value) => (
+                  <option value={value} key={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)} />
+            )}
+            {column.filterField?.operators?.length ? <small>Доступно: {column.filterField.operators.join(', ')}</small> : null}
           </label>
           <label>
             <span>Сортировка</span>
-            <select value={sort} onChange={(event) => onSortChange(event.target.value as SortDirection)}>
+            <select value={sort} onChange={(event) => onSortChange(event.target.value as SortDirection)} disabled={!canSortColumn(column)}>
               <option value="">Без сортировки</option>
               <option value="asc">По возрастанию</option>
               <option value="desc">По убыванию</option>
