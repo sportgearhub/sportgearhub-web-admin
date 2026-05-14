@@ -1,7 +1,7 @@
 import type { AdminOidcTokens, AdminSession } from '../../types/admin'
-import { API_BASE_URL } from '../../config/api'
 import { clearStoredAuthTokens, getAuthorizationHeader, getStoredAuthTokens, storeAuthTokens } from './authTokenStore'
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 const ADMIN_APP = 'admin'
 const OIDC_CLIENT_ID = import.meta.env.VITE_OIDC_CLIENT_ID?.trim() || 'sportgearhub-web-admin'
 const OIDC_SCOPE = 'openid profile email offline_access roles internal_api'

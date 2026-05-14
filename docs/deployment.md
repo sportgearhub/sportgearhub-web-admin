@@ -6,8 +6,6 @@ The Docker image uses `ghcr.io/static-web-server/static-web-server:2`, a static 
 
 The image includes `sws.toml` so SPA HTML and fallback routes are served with no-cache headers. Hashed assets under `/assets` remain cacheable for one year with `immutable`.
 
-The frontend has a runtime production fallback to `https://api.sportgearhub.ru` when it is served from `admin.sportgearhub.ru`, but the GitHub variable should still be set so the built asset is explicit.
-
 Published image:
 
 ```text
@@ -18,7 +16,7 @@ Required GitHub variables:
 
 - `DEPLOY_HOST`: target server host or IP
 - `DEPLOY_USER`: SSH user on the target server
-- `VITE_API_BASE_URL`: API origin used by the built frontend, normally `https://api.sportgearhub.ru`
+- `VITE_API_BASE_URL`: API origin used by the built frontend
 
 Required GitHub secret:
 
