@@ -1,12 +1,12 @@
-# Sportgearhub Admin Web Integration
+# Sportgearhub Web Admin Integration
 
-This is the single structured API integration file for the admin web console.
+This is the single structured API integration file for the admin web app.
 
 Use this file for endpoint wiring and admin-specific auth payloads. Keep deployment details in `docs/deployment.md`.
 
 ## App Identity
 
-The admin web console is hosted at:
+The admin web app is hosted at:
 
 ```text
 https://admin.sportgearhub.ru
@@ -41,7 +41,7 @@ https://admin.sportgearhub.ru/auth/reset-password?token=...
 https://admin.sportgearhub.ru/auth/verify-email?token=...
 ```
 
-After successful sign-in, the admin console route is:
+After successful sign-in, the admin workspace route is:
 
 ```text
 https://admin.sportgearhub.ru/console
@@ -72,7 +72,7 @@ Form body:
 
 ```text
 grant_type=password
-client_id=sportgearhub-web-admin-console
+client_id=sportgearhub-web-admin
 username=<admin-email>
 password=<admin-password>
 scope=openid profile email offline_access roles internal_api
@@ -111,7 +111,7 @@ Form body:
 
 ```text
 grant_type=refresh_token
-client_id=sportgearhub-web-admin-console
+client_id=sportgearhub-web-admin
 refresh_token=<refresh-token-from-login>
 ```
 
