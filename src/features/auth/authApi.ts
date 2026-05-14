@@ -3,7 +3,7 @@ import { clearStoredAuthTokens, getAuthorizationHeader, getStoredAuthTokens, sto
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 const ADMIN_APP = 'admin'
-const OIDC_CLIENT_ID = 'sportgearhub-web-admin-console'
+const OIDC_CLIENT_ID = import.meta.env.VITE_OIDC_CLIENT_ID?.trim() || 'sportgearhub-web-admin'
 const OIDC_SCOPE = 'openid profile email offline_access roles internal_api'
 
 type ApiErrorBody = {

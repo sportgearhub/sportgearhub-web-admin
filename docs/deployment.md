@@ -14,6 +14,7 @@ Required GitHub variables:
 
 - `DEPLOY_HOST`: target server host or IP
 - `DEPLOY_USER`: SSH user on the target server
+- `VITE_API_BASE_URL`: API origin used by the built frontend
 
 Required GitHub secret:
 
@@ -24,6 +25,13 @@ Optional GitHub variables:
 - `DEPLOY_PORT`: SSH port, defaults to `22`
 - `APP_DIR`: target app directory, defaults to `/opt/sportgearhub-web-admin`
 - `WEB_ADMIN_IMAGE`: Docker image tag, defaults to `production`
+- `VITE_OIDC_CLIENT_ID`: OIDC client id used by the built frontend, defaults to `sportgearhub-web-admin`
+
+Production builds must use this OIDC client id:
+
+```text
+sportgearhub-web-admin
+```
 
 The deploy user must be able to write to `/opt/sportgearhub-web-admin` and run Docker Compose. The target host must have an external Docker network named `apps-proxy` so Nginx can proxy to the app container. The target host must also be able to pull `ghcr.io/sportgearhub/sportgearhub-web-admin:production`.
 
