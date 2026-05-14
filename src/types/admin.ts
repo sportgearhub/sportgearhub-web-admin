@@ -80,6 +80,16 @@ export type AdminSession = {
   name: string
   email: string
   roles: string[]
+  tokens?: AdminOidcTokens
+}
+
+export type AdminOidcTokens = {
+  accessToken: string
+  tokenType: string
+  expiresAt?: string
+  refreshToken?: string
+  idToken?: string
+  scope?: string
 }
 
 export type FactRow = readonly [label: string, value: string]

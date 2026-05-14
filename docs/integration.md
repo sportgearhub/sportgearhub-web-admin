@@ -51,6 +51,14 @@ The fallback sign-in aliases `/login`, `/auth/sign-in`, and `/auth/login` are ac
 
 The frontend calls auth endpoints against same-origin `/api` by default. Set `VITE_API_BASE_URL` only when an environment needs an explicit API origin; the value must not change the admin email link domain.
 
+Admin OpenAPI document:
+
+```text
+/swagger/admin/swagger.json
+```
+
+The Swagger UI is still served at `/swagger` when the API enables Swagger.
+
 ## Sign In And Tokens
 
 Admin sign-in uses the OIDC password grant through the login alias:
@@ -89,6 +97,31 @@ Authorization: Bearer <access_token>
 ```
 
 `/internal/*` requires both the `Admin` role and the `internal_api` scope. Cookie-only login is not enough for admin review APIs.
+
+### Refresh Token
+
+Refresh uses the same token endpoint alias:
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+```
+
+Form body:
+
+```text
+grant_type=refresh_token
+client_id=sportgearhub-web-admin-console
+refresh_token=<refresh-token-from-login>
+```
+
+The response is a new OpenIddict token envelope. Replace the stored access token, refresh token, and id token with the new values.
+
+The API also supports the canonical OIDC endpoint:
+
+```http
+POST /connect/token
+```
 
 ## Password Reset
 

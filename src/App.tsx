@@ -11,6 +11,7 @@ import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignInPage } from './features/auth/SignInPage'
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage'
 import { signInWithPassword, signOutCurrentUser } from './features/auth/authApi'
+import { clearStoredAuthTokens } from './features/auth/authTokenStore'
 import { ConsoleShell } from './layout/ConsoleShell'
 import type { AdminSectionId, AdminSession, ConsoleAction, QueueItem } from './types/admin'
 
@@ -58,6 +59,7 @@ function App() {
   const currentSection = navItems.find((item) => item.id === activeSection) ?? navItems[0]
 
   const clearAdminState = useCallback(() => {
+    clearStoredAuthTokens()
     setActiveSession(null)
     setActiveSection('overview')
     setPendingAction(null)

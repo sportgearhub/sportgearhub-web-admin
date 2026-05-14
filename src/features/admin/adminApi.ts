@@ -1,3 +1,5 @@
+import { getAuthorizationHeader } from '../auth/authTokenStore'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 
 type ApiErrorBody = {
@@ -127,11 +129,16 @@ async function parseError(response: Response) {
 
 async function requestJson<TResponse>(path: string, init?: RequestInit) {
   const headers = new Headers(init?.headers)
+  const authorizationHeader = getAuthorizationHeader()
 
   headers.set('Accept', 'application/json')
 
   if (init?.body) {
     headers.set('Content-Type', 'application/json')
+  }
+
+  if (authorizationHeader) {
+    headers.set('Authorization', authorizationHeader)
   }
 
   const response = await fetch(buildApiUrl(path), {
