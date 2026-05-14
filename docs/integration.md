@@ -51,6 +51,45 @@ The fallback sign-in aliases `/login`, `/auth/sign-in`, and `/auth/login` are ac
 
 The frontend calls auth endpoints against same-origin `/api` by default. Set `VITE_API_BASE_URL` only when an environment needs an explicit API origin; the value must not change the admin email link domain.
 
+## Sign In And Tokens
+
+Admin sign-in uses the OIDC password grant through the login alias:
+
+```http
+POST /api/v1/auth/login
+Content-Type: application/x-www-form-urlencoded
+```
+
+Form body:
+
+```text
+grant_type=password
+client_id=sportgearhub-web-admin-console
+username=<admin-email>
+password=<admin-password>
+scope=openid profile email offline_access roles internal_api
+```
+
+The response is the OpenIddict token envelope:
+
+```json
+{
+  "access_token": "...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "...",
+  "id_token": "..."
+}
+```
+
+Store the token response in the admin auth state. Call admin APIs with:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+`/internal/*` requires both the `Admin` role and the `internal_api` scope. Cookie-only login is not enough for admin review APIs.
+
 ## Password Reset
 
 ```http
@@ -78,7 +117,7 @@ Reset request:
 ```json
 {
   "token": "email-link-token",
-  "password": "new-admin-password"
+  "newPassword": "new-admin-password"
 }
 ```
 
