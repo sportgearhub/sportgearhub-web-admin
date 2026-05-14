@@ -1,0 +1,50 @@
+[general]
+cache-control-headers = false
+
+[advanced]
+
+[[advanced.headers]]
+source = "/"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/index.html"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/console"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/console/**"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/sign-in"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/login"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/auth/**"
+headers.Cache-Control = "no-cache, no-store, must-revalidate"
+headers.Pragma = "no-cache"
+headers.Expires = "0"
+
+[[advanced.headers]]
+source = "/assets/**"
+headers.Cache-Control = "public, max-age=31536000, immutable"

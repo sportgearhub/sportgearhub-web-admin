@@ -4,6 +4,8 @@ Production is deployed by GitHub Actions when the `production` branch is updated
 
 The Docker image uses `ghcr.io/static-web-server/static-web-server:2`, a static server image. It serves only `dist` and uses `/public/index.html` as the SPA fallback page.
 
+The image includes `sws.toml` so SPA HTML and fallback routes are served with no-cache headers. Hashed assets under `/assets` remain cacheable for one year with `immutable`.
+
 Published image:
 
 ```text
