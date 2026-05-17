@@ -1,4 +1,6 @@
 import { Panel } from './Panel'
+import { Badge } from './ui/badge'
+import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from './ui/table'
 import type { QueueItem } from '../types/admin'
 
 type OperationalQueuesProps = {
@@ -8,40 +10,39 @@ type OperationalQueuesProps = {
 export function OperationalQueues({ items }: OperationalQueuesProps) {
   return (
     <Panel className="wide">
-      <div className="table-scroll">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Задача</th>
-              <th>Владелец</th>
-              <th>Статус</th>
-              <th>Обновлено</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableFrame>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Задача</TableHead>
+              <TableHead>Владелец</TableHead>
+              <TableHead>Статус</TableHead>
+              <TableHead>Обновлено</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {items.length ? (
               items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <span className={`severity ${item.severity}`}></span>
-                    <strong>{item.title}</strong>
-                    <small>{item.id}</small>
-                  </td>
-                  <td>{item.owner}</td>
-                  <td>{item.status}</td>
-                  <td>{item.updatedAt}</td>
-                </tr>
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <strong className="block font-medium">{item.title}</strong>
+                    <small className="text-xs text-muted-foreground">{item.id}</small>
+                  </TableCell>
+                  <TableCell>{item.owner}</TableCell>
+                  <TableCell><Badge variant={item.severity === 'critical' ? 'destructive' : item.severity === 'warning' ? 'warning' : 'info'}>{item.status}</Badge></TableCell>
+                  <TableCell>{item.updatedAt}</TableCell>
+                </TableRow>
               ))
             ) : (
-              <tr>
-                <td colSpan={4} className="empty-table-cell">
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                   Активных задач нет.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+      </TableFrame>
     </Panel>
   )
 }

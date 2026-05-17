@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { FactTable } from '../../components/FactTable'
 import { Panel } from '../../components/Panel'
+import { Badge } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { DialogBackdrop, DialogBody, DialogContent, DialogFooter, DialogHeader } from '../../components/ui/dialog'
+import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import type { ConsoleAction, SectionRecord } from '../../types/admin'
 
 type DomainPanelProps = {
@@ -26,46 +30,45 @@ export function DomainPanel({ actions, onAction }: DomainPanelProps) {
   return (
     <>
       <Panel className="wide">
-        <div className="table-scroll">
-          <table className="data-table section-record-table">
-            <thead>
-              <tr>
-                <th>Запись</th>
-                <th>Владелец</th>
-                <th>Статус</th>
-                <th>Обновлено</th>
-              </tr>
-            </thead>
-            <tbody>
+        <TableFrame>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Запись</TableHead>
+                <TableHead>Владелец</TableHead>
+                <TableHead>Статус</TableHead>
+                <TableHead>Обновлено</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {records.length ? (
                 records.map((record) => (
-                  <tr
+                  <TableRow
                     key={record.id}
-                    className="clickable-row"
+                    className="cursor-pointer"
                     tabIndex={0}
                     onClick={() => openRecord(record)}
                     onKeyDown={(event) => openRecordFromKeyboard(event, record)}
                   >
-                    <td>
-                      {record.severity ? <span className={`severity ${record.severity}`} aria-hidden="true"></span> : null}
-                      <strong>{record.title}</strong>
-                      <small>{record.id}</small>
-                    </td>
-                    <td>{record.owner}</td>
-                    <td>{record.status}</td>
-                    <td>{record.updatedAt}</td>
-                  </tr>
+                    <TableCell>
+                      <strong className="block font-medium">{record.title}</strong>
+                      <small className="text-xs text-muted-foreground">{record.id}</small>
+                    </TableCell>
+                    <TableCell>{record.owner}</TableCell>
+                    <TableCell><Badge variant={record.severity === 'critical' ? 'destructive' : record.severity === 'warning' ? 'warning' : 'info'}>{record.status}</Badge></TableCell>
+                    <TableCell>{record.updatedAt}</TableCell>
+                  </TableRow>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={4} className="empty-table-cell">
+                <TableRow>
+                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
                     В этом разделе пока нет записей.
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableFrame>
       </Panel>
 
       {selectedRecord ? (
@@ -92,41 +95,41 @@ function SectionDetailModal({
   onClose: () => void
 }) {
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="detail-modal"
+    <DialogBackdrop role="presentation" onMouseDown={onClose}>
+      <DialogContent
+        className="max-w-[760px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="detail-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="detail-modal-header">
+        <DialogHeader>
           <div>
-            <h2 id="detail-title">{record.title}</h2>
-            <span>{record.id}</span>
+            <h2 id="detail-title" className="text-xl font-semibold">{record.title}</h2>
+            <span className="text-sm text-muted-foreground">{record.id}</span>
           </div>
-          <button type="button" className="modal-close" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Закрыть
-          </button>
-        </header>
+          </Button>
+        </DialogHeader>
 
-        <div className="detail-modal-body">
+        <DialogBody>
           <FactTable rows={record.details} />
-        </div>
+        </DialogBody>
 
-        <footer className="detail-modal-actions">
+        <DialogFooter>
           {actions.map((action) => (
-            <button
+            <Button
               type="button"
               key={action.label}
-              className={action.tone === 'danger' ? 'danger-action' : 'secondary-action'}
+              variant={action.tone === 'danger' ? 'destructive' : 'outline'}
               onClick={() => onAction(action)}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
-        </footer>
-      </section>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </DialogBackdrop>
   )
 }

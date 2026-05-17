@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { AuthFrame } from './AuthFrame'
 
 type SignInPageProps = {
@@ -34,28 +36,31 @@ export function SignInPage({ onSignIn, onForgotPassword }: SignInPageProps) {
 
   return (
     <AuthFrame>
-      <form className="sign-in-form" onSubmit={submitForm}>
-        <h1>Вход</h1>
+      <form className="grid gap-4" onSubmit={submitForm}>
+        <div className="grid gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Вход</h1>
+          <p className="text-sm text-muted-foreground">Административная консоль Sportgearhub</p>
+        </div>
 
-        <label>
-          <span>Email</span>
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" autoFocus />
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Email</span>
+          <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" autoFocus />
         </label>
 
-        <label>
-          <span>Пароль</span>
-          <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" />
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Пароль</span>
+          <Input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" />
         </label>
 
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
 
-        <button type="submit" className="primary-action" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Входим...' : 'Войти'}
-        </button>
+        </Button>
 
-        <button type="button" className="text-action" onClick={onForgotPassword}>
+        <Button type="button" variant="link" className="h-auto p-0" onClick={onForgotPassword}>
           Забыли пароль?
-        </button>
+        </Button>
       </form>
     </AuthFrame>
   )

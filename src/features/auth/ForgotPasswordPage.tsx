@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { AuthFrame } from './AuthFrame'
 import { requestPasswordReset } from './authApi'
 
@@ -32,26 +34,26 @@ export function ForgotPasswordPage({ onBackToSignIn }: ForgotPasswordPageProps) 
 
   return (
     <AuthFrame>
-      <form className="sign-in-form" onSubmit={submitForm}>
-        <h1>Восстановление пароля</h1>
+      <form className="grid gap-4" onSubmit={submitForm}>
+        <h1 className="text-2xl font-semibold tracking-tight">Восстановление пароля</h1>
 
-        <p className="form-note">Если email есть в списке администраторов, мы отправим ссылку для смены пароля.</p>
+        <p className="text-sm text-muted-foreground">Если email есть в списке администраторов, мы отправим ссылку для смены пароля.</p>
 
-        <label>
-          <span>Email</span>
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" autoFocus />
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Email</span>
+          <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" autoFocus />
         </label>
 
-        {error ? <p className="form-error">{error}</p> : null}
-        {isSubmitted ? <p className="form-success">Проверьте почту и откройте ссылку из письма.</p> : null}
+        {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+        {isSubmitted ? <p className="text-sm font-medium text-primary">Проверьте почту и откройте ссылку из письма.</p> : null}
 
-        <button type="submit" className="primary-action" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Отправляем...' : 'Отправить ссылку'}
-        </button>
+        </Button>
 
-        <button type="button" className="text-action" onClick={onBackToSignIn}>
+        <Button type="button" variant="link" className="h-auto p-0" onClick={onBackToSignIn}>
           Вернуться ко входу
-        </button>
+        </Button>
       </form>
     </AuthFrame>
   )

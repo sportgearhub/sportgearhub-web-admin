@@ -23,6 +23,8 @@ export type NavItem = {
   label: string
 }
 
+export type OnboardingViewMode = 'table' | 'analytics'
+
 export type QueueItem = {
   id: string
   title: string

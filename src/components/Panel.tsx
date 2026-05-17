@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { Card, CardHeader, CardTitle } from './ui/card'
+import { cn } from '../lib/utils'
 
 type PanelProps = {
   children: ReactNode
@@ -10,13 +12,13 @@ type PanelHeaderProps = {
 }
 
 export function Panel({ children, className = '' }: PanelProps) {
-  return <section className={`panel ${className}`.trim()}>{children}</section>
+  return <Card className={cn('min-w-0 p-4', className)}>{children}</Card>
 }
 
 export function PanelHeader({ title }: PanelHeaderProps) {
   return (
-    <header className="panel-header">
-      <h2>{title}</h2>
-    </header>
+    <CardHeader className="mb-3 border-b p-0 pb-3">
+      <CardTitle>{title}</CardTitle>
+    </CardHeader>
   )
 }

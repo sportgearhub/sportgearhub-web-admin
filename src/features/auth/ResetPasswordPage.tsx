@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { AuthFrame } from './AuthFrame'
 import { resetPassword } from './authApi'
 
@@ -49,14 +51,14 @@ export function ResetPasswordPage({ token, onBackToSignIn }: ResetPasswordPagePr
 
   return (
     <AuthFrame>
-      <form className="sign-in-form" onSubmit={submitForm}>
-        <h1>Новый пароль</h1>
+      <form className="grid gap-4" onSubmit={submitForm}>
+        <h1 className="text-2xl font-semibold tracking-tight">Новый пароль</h1>
 
-        <p className="form-note">Задайте новый пароль для доступа к административной консоли.</p>
+        <p className="text-sm text-muted-foreground">Задайте новый пароль для доступа к административной консоли.</p>
 
-        <label>
-          <span>Новый пароль</span>
-          <input
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Новый пароль</span>
+          <Input
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type="password"
@@ -65,9 +67,9 @@ export function ResetPasswordPage({ token, onBackToSignIn }: ResetPasswordPagePr
           />
         </label>
 
-        <label>
-          <span>Повторите пароль</span>
-          <input
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Повторите пароль</span>
+          <Input
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             type="password"
@@ -75,16 +77,16 @@ export function ResetPasswordPage({ token, onBackToSignIn }: ResetPasswordPagePr
           />
         </label>
 
-        {error ? <p className="form-error">{error}</p> : null}
-        {isComplete ? <p className="form-success">Пароль обновлен. Теперь можно войти.</p> : null}
+        {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+        {isComplete ? <p className="text-sm font-medium text-primary">Пароль обновлен. Теперь можно войти.</p> : null}
 
-        <button type="submit" className="primary-action" disabled={isSubmitting || isComplete}>
+        <Button type="submit" disabled={isSubmitting || isComplete}>
           {isSubmitting ? 'Сохраняем...' : 'Сохранить пароль'}
-        </button>
+        </Button>
 
-        <button type="button" className="text-action" onClick={onBackToSignIn}>
+        <Button type="button" variant="link" className="h-auto p-0" onClick={onBackToSignIn}>
           Вернуться ко входу
-        </button>
+        </Button>
       </form>
     </AuthFrame>
   )

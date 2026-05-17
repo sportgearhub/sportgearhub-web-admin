@@ -1,4 +1,5 @@
 import type { FactRow } from '../types/admin'
+import { Table, TableBody, TableCell, TableFrame, TableHead, TableRow } from './ui/table'
 
 type FactTableProps = {
   rows: readonly FactRow[]
@@ -6,17 +7,17 @@ type FactTableProps = {
 
 export function FactTable({ rows }: FactTableProps) {
   return (
-    <div className="table-scroll">
-      <table className="data-table key-value-table">
-        <tbody>
+    <TableFrame>
+      <Table className="table-fixed">
+        <TableBody>
           {rows.map(([label, value]) => (
-            <tr key={label}>
-              <th>{label}</th>
-              <td>{value}</td>
-            </tr>
+            <TableRow key={label}>
+              <TableHead className="w-52 normal-case tracking-normal text-foreground">{label}</TableHead>
+              <TableCell>{value}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableFrame>
   )
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import './App.css'
+import { Card, CardContent, CardHeader } from './components/ui/card'
 import { ConsentModal } from './components/ConsentModal'
 import { MetricsGrid } from './components/MetricsGrid'
 import { OperationalQueues } from './components/OperationalQueues'
@@ -11,10 +11,10 @@ import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignInPage } from './features/auth/SignInPage'
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage'
-import { signInWithPassword, signOutCurrentUser } from './features/auth/authApi'
+import { restoreCurrentSession, signInWithPassword, signOutCurrentUser } from './features/auth/authApi'
 import { clearStoredAuthTokens } from './features/auth/authTokenStore'
 import { ConsoleShell } from './layout/ConsoleShell'
-import type { AdminSectionId, AdminSession, ConsoleAction, QueueItem } from './types/admin'
+import type { AdminSectionId, AdminSession, ConsoleAction, OnboardingViewMode, QueueItem } from './types/admin'
 
 const CONSOLE_PATH = '/console'
 const FORGOT_PASSWORD_PATH = '/auth/forgot-password'
@@ -53,10 +53,11 @@ function isAuthPath(path: string) {
 function App() {
   const [activeSession, setActiveSession] = useState<AdminSession | null>(null)
   const [activeSection, setActiveSection] = useState<AdminSectionId>('overview')
+  const [onboardingViewMode, setOnboardingViewMode] = useState<OnboardingViewMode>('table')
   const [pendingAction, setPendingAction] = useState<ConsoleAction | null>(null)
-  const [search, setSearch] = useState('')
   const [currentPath, setCurrentPath] = useState(getCurrentPath)
   const [currentSearch, setCurrentSearch] = useState(getCurrentSearch)
+  const [isRestoringSession, setIsRestoringSession] = useState(true)
   const currentSection = navItems.find((item) => item.id === activeSection) ?? navItems[0]
 
   const clearAdminState = useCallback(() => {
@@ -64,7 +65,6 @@ function App() {
     setActiveSession(null)
     setActiveSection('overview')
     setPendingAction(null)
-    setSearch('')
   }, [])
 
   const navigateTo = useCallback((path: string) => {
@@ -132,6 +132,32 @@ function App() {
   }, [clearAdminState])
 
   useEffect(() => {
+    let isMounted = true
+
+    async function restoreSession() {
+      if (isAuthPath(getCurrentPath())) {
+        setIsRestoringSession(false)
+        return
+      }
+
+      const session = await restoreCurrentSession()
+
+      if (!isMounted) {
+        return
+      }
+
+      setActiveSession(session)
+      setIsRestoringSession(false)
+    }
+
+    void restoreSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
     function handleDocumentClick(event: MouseEvent) {
       const target = event.target
 
@@ -163,18 +189,6 @@ function App() {
       document.removeEventListener('click', handleDocumentClick)
     }
   }, [resetToSignIn])
-
-  const filteredQueues = useMemo(() => {
-    const query = search.trim().toLowerCase()
-
-    if (!query) {
-      return operationalQueues
-    }
-
-    return operationalQueues.filter((item) =>
-      `${item.id} ${item.title} ${item.owner} ${item.status}`.toLowerCase().includes(query),
-    )
-  }, [search])
 
   const visibleActions = sectionActions[activeSection] ?? [
     {
@@ -213,6 +227,29 @@ function App() {
     return <VerifyEmailPage hasToken={Boolean(resetToken)} onBackToSignIn={resetToSignIn} />
   }
 
+  if (isRestoringSession) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-muted/40 p-4">
+        <Card className="w-full max-w-[420px]">
+          <CardHeader className="pb-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">SG</span>
+              <div>
+                <strong className="block text-sm font-semibold">Sportgearhub Admin</strong>
+                <span className="block text-xs text-muted-foreground">Проверяем сессию</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!activeSession || isSignInPath(normalizedPath)) {
     return <SignInPage onSignIn={signIn} onForgotPassword={goToForgotPassword} />
   }
@@ -223,23 +260,23 @@ function App() {
       currentSection={currentSection}
       navItems={navItems}
       operator={activeSession}
-      search={search}
-      onSearchChange={setSearch}
+      onboardingViewMode={onboardingViewMode}
       onSectionChange={setActiveSection}
+      onOnboardingViewModeChange={setOnboardingViewMode}
       onSignOut={signOut}
     >
       {activeSection === 'overview' ? (
         <>
           <MetricsGrid />
 
-          <section className="content-grid">
-            <OperationalQueues items={filteredQueues} />
+          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
+            <OperationalQueues items={operationalQueues} />
           </section>
         </>
       ) : (
         <>
           {activeSection === 'onboarding' ? (
-            <OnboardingReview />
+            <OnboardingReview viewMode={onboardingViewMode} />
           ) : activeSection === 'canonicalization' ? (
             <EquipmentTaxonomyReview />
           ) : (

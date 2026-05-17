@@ -1,5 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { OnboardingApplication, Severity } from '../../types/admin'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  Filter,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
+import { Badge, type BadgeProps } from '../../components/ui/badge'
+import { Button } from '../../components/ui/button'
+import { DialogBackdrop, DialogBody, DialogContent, DialogFooter, DialogHeader } from '../../components/ui/dialog'
+import { Input, Textarea } from '../../components/ui/input'
+import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../components/ui/table'
+import type { OnboardingApplication, OnboardingViewMode, Severity } from '../../types/admin'
 import {
   getProviderOnboarding,
   getProviderOnboardingOptions,
@@ -20,6 +42,7 @@ const REVIEW_ACTIONS: Array<{ code: ProviderOnboardingAction; label: string; ton
   { code: 'request_changes', label: 'Запросить изменения' },
   { code: 'reject', label: 'Отклонить', tone: 'danger' },
 ]
+const ICON_SIZE = 16
 const DEFAULT_PAGINATION: PaginationResponse = {
   page: 1,
   pageSize: 20,
@@ -42,8 +65,8 @@ type ColumnConfig = {
 type ColumnState = Record<OnboardingColumnKey, { filter: string; sort: SortDirection }>
 
 const COLUMNS: ColumnConfig[] = [
-  { key: 'displayName', label: 'Провайдер', field: 'displayName', filterKind: 'text' },
-  { key: 'legalName', label: 'Юр. название', field: 'legalName', filterKind: 'text' },
+  { key: 'displayName', label: 'Профиль', field: 'displayName', filterKind: 'text' },
+  { key: 'legalName', label: 'Юрлицо', field: 'legalName', filterKind: 'text' },
   { key: 'taxNumber', label: 'ИНН', field: 'taxNumber', filterKind: 'text' },
   { key: 'status', label: 'Статус', field: 'status', filterKind: 'status' },
   { key: 'submittedAt', label: 'Подано', field: 'submittedAt', filterKind: 'date' },
@@ -139,6 +162,44 @@ function getSortLabel(direction: SortDirection) {
   return 'без сортировки'
 }
 
+function getSortIcon(direction: SortDirection) {
+  if (direction === 'asc') {
+    return <ArrowUp size={ICON_SIZE} aria-hidden="true" />
+  }
+
+  if (direction === 'desc') {
+    return <ArrowDown size={ICON_SIZE} aria-hidden="true" />
+  }
+
+  return <ArrowUpDown size={ICON_SIZE} aria-hidden="true" />
+}
+
+function getStatusBadgeVariant(status: string): BadgeProps['variant'] {
+  const severity = getStatusSeverity(status)
+
+  if (severity === 'critical') {
+    return 'destructive'
+  }
+
+  if (severity === 'warning') {
+    return 'warning'
+  }
+
+  if (severity === 'ok') {
+    return 'success'
+  }
+
+  return 'info'
+}
+
+function quietValue(value?: string | null) {
+  if (!value || value === 'Не указан' || value === 'Не указано' || value === 'Не указана') {
+    return <span className="text-muted-foreground">—</span>
+  }
+
+  return value
+}
+
 function mergeColumnOptions(options: ProviderOnboardingListOptionsResponse | null) {
   if (!options) {
     return COLUMNS
@@ -230,7 +291,11 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
-export function OnboardingReview() {
+type OnboardingReviewProps = {
+  viewMode: OnboardingViewMode
+}
+
+export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
   const [applications, setApplications] = useState<OnboardingApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<OnboardingApplication | null>(null)
   const [columnState, setColumnState] = useState<ColumnState>(EMPTY_COLUMN_STATE)
@@ -368,19 +433,43 @@ export function OnboardingReview() {
     setSelectedApplication(application)
   }
 
+  if (viewMode === 'analytics') {
+    return (
+      <section className="grid min-h-[calc(100vh-3.5rem)] place-items-center border-t bg-background p-6">
+        <div className="max-w-md text-center">
+          <h2 className="text-lg font-semibold">Аналитика онбординга</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Здесь будет сводка по воронке, статусам и скорости ревью, когда появится аналитический контракт API.
+          </p>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <>
-      <section className="panel wide">
-        <div className="table-controls">
-          <button type="button" className="secondary-action" onClick={() => void loadQueue(pagination.page)} disabled={isQueueLoading}>
-            {isQueueLoading ? 'Обновляем...' : 'Обновить'}
-          </button>
-          <button type="button" className="secondary-action" onClick={clearAllFilters}>
-            Сбросить фильтры
-          </button>
-          <label>
-            <span>Строк</span>
-            <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+      <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-b px-2 py-2">
+          <span className="text-sm text-muted-foreground">
+            {pagination.totalItems} заявок
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => void loadQueue(pagination.page)}
+            disabled={isQueueLoading}
+            aria-label="Обновить"
+            title="Обновить"
+          >
+            <RefreshCw size={ICON_SIZE} aria-hidden="true" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" onClick={clearAllFilters} aria-label="Сбросить фильтры" title="Сбросить фильтры">
+            <RotateCcw size={ICON_SIZE} aria-hidden="true" />
+          </Button>
+          <label className="flex h-9 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground hover:bg-muted" title="Строк на странице">
+            <SlidersHorizontal size={ICON_SIZE} aria-hidden="true" />
+            <select className="bg-transparent text-sm outline-none" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
@@ -388,75 +477,107 @@ export function OnboardingReview() {
           </label>
         </div>
 
-        {lookupError ? <p className="panel-error">{lookupError}</p> : null}
+        {lookupError ? <p className="border-b px-2 py-2 text-sm font-medium text-destructive">{lookupError}</p> : null}
 
-        <div className="table-scroll">
-          <table className="data-table onboarding-table">
-            <thead>
-              <tr>
+        <TableFrame className="min-h-0 flex-1 rounded-none border-0 bg-background">
+          <Table className="min-w-0 table-fixed">
+            <colgroup>
+              <col className="w-[31%]" />
+              <col className="w-[26%]" />
+              <col className="w-[13%]" />
+              <col className="w-[14%]" />
+              <col className="w-[16%]" />
+            </colgroup>
+            <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+              <TableRow>
                 {columns.map((column) => {
                   const state = columnState[column.key]
                   const hasFilter = Boolean(state.filter.trim())
 
                   return (
-                    <th key={column.key}>
-                      <button type="button" className="column-control-button" onClick={() => openColumnDialog(column)}>
-                        <span>{column.label}</span>
-                        <small>
-                          {hasFilter ? 'фильтр' : 'все'} · {getSortLabel(state.sort)}
-                        </small>
+                    <TableHead key={column.key} className="px-2 py-2 align-top">
+                      <button type="button" className="flex w-full items-start justify-between gap-2 rounded-md px-1 py-1 text-left hover:bg-background" onClick={() => openColumnDialog(column)}>
+                        <span className="min-w-0 break-words">
+                          {column.label}
+                        </span>
+                        <span className={state.sort || hasFilter ? 'grid size-5 place-items-center rounded bg-accent text-primary' : 'grid size-5 place-items-center text-muted-foreground'} title={getSortLabel(state.sort)}>
+                          {hasFilter ? <Filter size={12} aria-label="Есть фильтр" /> : null}
+                          {getSortIcon(state.sort)}
+                        </span>
                       </button>
-                    </th>
+                    </TableHead>
                   )
                 })}
-              </tr>
-            </thead>
-            <tbody>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {applications.length ? (
                 applications.map((application) => (
-                  <tr
+                  <TableRow
                     key={application.id}
-                    className="clickable-row"
+                    className="cursor-pointer"
                     tabIndex={0}
                     onClick={() => void openApplication(application)}
                     onKeyDown={(event) => openApplicationFromKeyboard(event, application)}
                   >
-                    <td>
-                      <span className={`severity ${application.priority}`} aria-hidden="true"></span>
-                      <strong>{application.providerName}</strong>
-                      <small>Заявка {application.id}</small>
-                    </td>
-                    <td>
-                      <strong>{application.legalName}</strong>
-                      <small>{application.legalForm ?? 'Форма не указана'}</small>
-                    </td>
-                    <td>{application.taxId}</td>
-                    <td>{application.status}</td>
-                    <td>{application.submittedAt}</td>
-                  </tr>
+                    <TableCell className="min-w-0 px-2">
+                      <div className="grid min-w-0 grid-cols-[10px_minmax(0,1fr)] gap-2">
+                        <span className={application.priority === 'critical' ? 'mt-1.5 size-2 rounded-full bg-destructive' : application.priority === 'warning' ? 'mt-1.5 size-2 rounded-full bg-amber-500' : application.priority === 'ok' ? 'mt-1.5 size-2 rounded-full bg-primary' : 'mt-1.5 size-2 rounded-full bg-sky-500'} aria-hidden="true"></span>
+                        <div>
+                          <strong className="block truncate text-sm font-medium">{application.providerName}</strong>
+                          <small className="block truncate text-xs text-muted-foreground">{application.applicantEmail}</small>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="min-w-0 px-2">
+                      <strong className="block truncate text-sm font-medium">{quietValue(application.legalName)}</strong>
+                      <small className="block truncate text-xs text-muted-foreground">{application.legalForm || application.id}</small>
+                    </TableCell>
+                    <TableCell className="px-2">{quietValue(application.taxId)}</TableCell>
+                    <TableCell className="px-2">
+                      <Badge variant={getStatusBadgeVariant(application.status)} className="max-w-full truncate">{application.status}</Badge>
+                    </TableCell>
+                    <TableCell className="px-2 text-xs text-muted-foreground">{application.submittedAt}</TableCell>
+                  </TableRow>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={COLUMNS.length} className="empty-table-cell">
+                <TableRow>
+                  <TableCell colSpan={COLUMNS.length} className="py-8 text-center text-muted-foreground">
                     {isQueueLoading ? 'Загружаем заявки...' : 'Заявок для проверки нет.'}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableFrame>
 
-        <footer className="table-pagination">
+        <footer className="flex flex-wrap items-center justify-between gap-2 border-t px-2 py-2 text-sm text-muted-foreground">
           <span>
             Страница {pagination.page || 1} из {Math.max(pagination.totalPages, 1)} · всего {pagination.totalItems}
           </span>
-          <div>
-            <button type="button" className="secondary-action" onClick={() => void loadQueue(pagination.page - 1)} disabled={!pagination.hasPreviousPage}>
-              Назад
-            </button>
-            <button type="button" className="secondary-action" onClick={() => void loadQueue(pagination.page + 1)} disabled={!pagination.hasNextPage}>
-              Вперед
-            </button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => void loadQueue(pagination.page - 1)}
+              disabled={!pagination.hasPreviousPage}
+              aria-label="Предыдущая страница"
+              title="Предыдущая страница"
+            >
+              <ChevronLeft size={ICON_SIZE} aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => void loadQueue(pagination.page + 1)}
+              disabled={!pagination.hasNextPage}
+              aria-label="Следующая страница"
+              title="Следующая страница"
+            >
+              <ChevronRight size={ICON_SIZE} aria-hidden="true" />
+            </Button>
           </div>
         </footer>
       </section>
@@ -506,20 +627,20 @@ function ColumnFilterModal({
   onClose: () => void
 }) {
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="column-filter-modal" role="dialog" aria-modal="true" aria-labelledby="column-filter-title" onMouseDown={(event) => event.stopPropagation()}>
-        <header>
-          <h2 id="column-filter-title">{column.label}</h2>
-          <button type="button" className="modal-close" onClick={onClose}>
-            Закрыть
-          </button>
-        </header>
+    <DialogBackdrop role="presentation" onMouseDown={onClose}>
+      <DialogContent className="max-w-[420px]" role="dialog" aria-modal="true" aria-labelledby="column-filter-title" onMouseDown={(event) => event.stopPropagation()}>
+        <DialogHeader>
+          <h2 id="column-filter-title" className="text-lg font-semibold">{column.label}</h2>
+          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть" title="Закрыть">
+            <X size={ICON_SIZE} aria-hidden="true" />
+          </Button>
+        </DialogHeader>
 
-        <div className="column-filter-body">
-          <label>
-            <span>Фильтр</span>
+        <DialogBody className="grid gap-4">
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">Фильтр</span>
             {column.filterField?.values?.length ? (
-              <select value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
+              <select className="h-10 rounded-md border bg-card px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
                 <option value="">Все</option>
                 {column.filterField.values.map((value) => (
                   <option value={value} key={value}>
@@ -528,30 +649,34 @@ function ColumnFilterModal({
                 ))}
               </select>
             ) : (
-              <input value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)} />
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <Input className="pl-9" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)} />
+              </div>
             )}
-            {column.filterField?.operators?.length ? <small>Доступно: {column.filterField.operators.join(', ')}</small> : null}
           </label>
-          <label>
-            <span>Сортировка</span>
-            <select value={sort} onChange={(event) => onSortChange(event.target.value as SortDirection)} disabled={!canSortColumn(column)}>
+          <label className="grid gap-2">
+            <span className="text-sm font-medium">Сортировка</span>
+            <select className="h-10 rounded-md border bg-card px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring" value={sort} onChange={(event) => onSortChange(event.target.value as SortDirection)} disabled={!canSortColumn(column)}>
               <option value="">Без сортировки</option>
               <option value="asc">По возрастанию</option>
               <option value="desc">По убыванию</option>
             </select>
           </label>
-        </div>
+        </DialogBody>
 
-        <footer>
-          <button type="button" className="secondary-action" onClick={onReset}>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onReset}>
+            <RotateCcw size={ICON_SIZE} aria-hidden="true" />
             Очистить
-          </button>
-          <button type="button" className="primary-action" onClick={onApply}>
+          </Button>
+          <Button type="button" onClick={onApply}>
+            <Check size={ICON_SIZE} aria-hidden="true" />
             Применить
-          </button>
-        </footer>
-      </section>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogBackdrop>
   )
 }
 
@@ -609,152 +734,159 @@ function OnboardingDetailModal({
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="onboarding-modal"
+    <DialogBackdrop role="presentation" onMouseDown={onClose}>
+      <DialogContent
+        className="max-w-[920px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="onboarding-modal-header">
+        <DialogHeader>
           <div>
-            <h2 id="onboarding-title">{application.providerName}</h2>
-            <span>Заявка {application.id}</span>
+            <h2 id="onboarding-title" className="text-xl font-semibold">{application.providerName}</h2>
+            <span className="block text-sm text-muted-foreground">{application.id}</span>
           </div>
-          <button type="button" className="modal-close" onClick={onClose}>
-            Закрыть
-          </button>
-        </header>
+          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть" title="Закрыть">
+            <X size={ICON_SIZE} aria-hidden="true" />
+          </Button>
+        </DialogHeader>
 
-        <div className="onboarding-modal-body">
-          {detailError ? <p className="form-error">{detailError}</p> : null}
+        <DialogBody className="grid gap-4 lg:grid-cols-2">
+          {detailError ? <p className="text-sm font-medium text-destructive lg:col-span-2">{detailError}</p> : null}
 
-          <section>
-            <h3>Заявитель</h3>
-            <table className="data-table key-value-table">
-              <tbody>
+          <section className="rounded-lg border bg-muted/30 p-4">
+            <h3 className="mb-3 text-sm font-semibold">Заявитель</h3>
+            <TableFrame>
+              <Table>
+                <TableBody>
                 <tr>
-                  <th>Имя</th>
-                  <td>{application.applicantName}</td>
+                  <TableHead className="w-40 normal-case tracking-normal">Имя</TableHead>
+                  <TableCell>{quietValue(application.applicantName)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Email</th>
-                  <td>{application.applicantEmail}</td>
+                  <TableHead className="normal-case tracking-normal">Email</TableHead>
+                  <TableCell>{quietValue(application.applicantEmail)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Телефон</th>
-                  <td>{application.contactPhone ?? 'Не указан'}</td>
+                  <TableHead className="normal-case tracking-normal">Телефон</TableHead>
+                  <TableCell>{quietValue(application.contactPhone)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Статус</th>
-                  <td>{application.status}</td>
+                  <TableHead className="normal-case tracking-normal">Статус</TableHead>
+                  <TableCell><Badge variant={getStatusBadgeVariant(application.status)}>{application.status}</Badge></TableCell>
                 </tr>
                 <tr>
-                  <th>Профиль провайдера</th>
-                  <td>{application.providerId ?? 'Еще не создан'}</td>
+                  <TableHead className="normal-case tracking-normal">Профиль</TableHead>
+                  <TableCell>{application.providerId ? application.providerId : <span className="text-muted-foreground">создастся после одобрения</span>}</TableCell>
                 </tr>
-              </tbody>
-            </table>
+                </TableBody>
+              </Table>
+            </TableFrame>
           </section>
 
-          <section>
-            <h3>Юридические данные</h3>
-            <table className="data-table key-value-table">
-              <tbody>
+          <section className="rounded-lg border bg-muted/30 p-4">
+            <h3 className="mb-3 text-sm font-semibold">Юридические данные</h3>
+            <TableFrame>
+              <Table>
+                <TableBody>
                 <tr>
-                  <th>Название</th>
-                  <td>{application.legalName}</td>
+                  <TableHead className="w-40 normal-case tracking-normal">Название</TableHead>
+                  <TableCell>{quietValue(application.legalName)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Страна</th>
-                  <td>{application.legalCountryCode ?? 'Не указана'}</td>
+                  <TableHead className="normal-case tracking-normal">Страна</TableHead>
+                  <TableCell>{quietValue(application.legalCountryCode)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Форма</th>
-                  <td>{application.legalForm ?? 'Не указана'}</td>
+                  <TableHead className="normal-case tracking-normal">Форма</TableHead>
+                  <TableCell>{quietValue(application.legalForm)}</TableCell>
                 </tr>
                 <tr>
-                  <th>ИНН</th>
-                  <td>{application.taxId}</td>
+                  <TableHead className="normal-case tracking-normal">ИНН</TableHead>
+                  <TableCell>{application.taxId}</TableCell>
                 </tr>
                 <tr>
-                  <th>ОГРН</th>
-                  <td>{application.registrationNumber ?? 'Не указан'}</td>
+                  <TableHead className="normal-case tracking-normal">ОГРН</TableHead>
+                  <TableCell>{quietValue(application.registrationNumber)}</TableCell>
                 </tr>
                 <tr>
-                  <th>КПП</th>
-                  <td>{application.branchNumber ?? 'Не указан'}</td>
+                  <TableHead className="normal-case tracking-normal">КПП</TableHead>
+                  <TableCell>{quietValue(application.branchNumber)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Юр. адрес</th>
-                  <td>{application.registeredAddress ?? 'Не указан'}</td>
+                  <TableHead className="normal-case tracking-normal">Юр. адрес</TableHead>
+                  <TableCell>{quietValue(application.registeredAddress)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Город</th>
-                  <td>{application.city}</td>
+                  <TableHead className="normal-case tracking-normal">Город</TableHead>
+                  <TableCell>{quietValue(application.city)}</TableCell>
                 </tr>
                 <tr>
-                  <th>Адрес</th>
-                  <td>{application.address ?? 'Не указан'}</td>
+                  <TableHead className="normal-case tracking-normal">Адрес</TableHead>
+                  <TableCell>{quietValue(application.address)}</TableCell>
                 </tr>
-              </tbody>
-            </table>
+                </TableBody>
+              </Table>
+            </TableFrame>
           </section>
 
-          <section>
-            <h3>Чеклист</h3>
-            <ul className="modal-checklist">
+          <section className="rounded-lg border bg-muted/30 p-4">
+            <h3 className="mb-3 text-sm font-semibold">Чеклист</h3>
+            <ul className="grid gap-2">
               {application.checklist.map((item) => (
-                <li key={item.label}>
-                  <span className={item.done ? 'check done' : 'check'}>{item.done ? '✓' : ''}</span>
+                <li className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-sm" key={item.label}>
+                  <span className={item.done ? 'grid size-5 place-items-center rounded-full bg-primary text-primary-foreground' : 'grid size-5 place-items-center rounded-full bg-muted'}>{item.done ? <Check size={12} aria-hidden="true" /> : null}</span>
                   <span>{item.label}</span>
                 </li>
               ))}
             </ul>
           </section>
 
-          <section>
-            <h3>Заметка ревью</h3>
-            <p>{application.reviewNote}</p>
-            {application.description ? <p>{application.description}</p> : null}
+          <section className="rounded-lg border bg-muted/30 p-4">
+            <h3 className="mb-3 text-sm font-semibold">Заметка ревью</h3>
+            <p className="text-sm text-muted-foreground">{application.reviewNote}</p>
+            {application.description ? <p className="mt-2 text-sm">{application.description}</p> : null}
           </section>
 
-          <section className="review-decision-panel">
-            <h3>Решение</h3>
-            {!canReview ? <p className="form-note">Откройте загруженную заявку, чтобы принять решение.</p> : null}
-            <label>
-              <span>Причина решения</span>
-              <input
+          <section className="grid gap-3 rounded-lg border bg-muted/30 p-4 lg:col-span-2">
+            <h3 className="text-sm font-semibold">Решение</h3>
+            {!canReview ? <p className="text-sm text-muted-foreground">Откройте загруженную заявку, чтобы принять решение.</p> : null}
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">Причина</span>
+              <Input
                 value={reasonCode}
                 onChange={(event) => setReasonCode(event.target.value)}
                 placeholder="Обязательно для запроса изменений или отказа"
                 disabled={!canReview}
               />
             </label>
-            <label>
-              <span>Комментарий</span>
-              <textarea value={comments} onChange={(event) => setComments(event.target.value)} disabled={!canReview} />
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">Комментарий</span>
+              <Textarea value={comments} onChange={(event) => setComments(event.target.value)} disabled={!canReview} />
             </label>
-            {actionError ? <p className="form-error">{actionError}</p> : null}
-            {actionSuccess ? <p className="form-success">{actionSuccess}</p> : null}
+            {actionError ? <p className="text-sm font-medium text-destructive">{actionError}</p> : null}
+            {actionSuccess ? <p className="text-sm font-medium text-primary">{actionSuccess}</p> : null}
           </section>
-        </div>
+        </DialogBody>
 
-        <footer className="onboarding-modal-actions">
+        <DialogFooter>
           {REVIEW_ACTIONS.map((action) => (
-            <button
+            <Button
               type="button"
               key={action.code}
-              className={action.tone === 'danger' ? 'danger-action' : 'secondary-action'}
+              variant={action.tone === 'danger' ? 'destructive' : 'outline'}
               onClick={() => void submitAction(action.code)}
               disabled={!canReview || Boolean(submittingAction)}
             >
+              {action.code === 'approve' ? <CircleCheck size={ICON_SIZE} aria-hidden="true" /> : null}
+              {action.code === 'request_changes' ? <CircleAlert size={ICON_SIZE} aria-hidden="true" /> : null}
+              {action.code === 'reject' ? <CircleX size={ICON_SIZE} aria-hidden="true" /> : null}
               {submittingAction === action.code ? 'Отправляем...' : action.label}
-            </button>
+            </Button>
           ))}
-        </footer>
-      </section>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </DialogBackdrop>
   )
 }

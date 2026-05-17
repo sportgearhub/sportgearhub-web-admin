@@ -1,4 +1,5 @@
-import { getAuthorizationHeader } from '../auth/authTokenStore'
+import { getFreshAuthorizationHeader, refreshStoredAuthTokens } from '../auth/authApi'
+import { getStoredAuthTokens } from '../auth/authTokenStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 
@@ -279,7 +280,7 @@ async function parseError(response: Response) {
 
 async function requestJson<TResponse>(path: string, init?: RequestInit) {
   const headers = new Headers(init?.headers)
-  const authorizationHeader = getAuthorizationHeader()
+  const authorizationHeader = await getFreshAuthorizationHeader()
 
   headers.set('Accept', 'application/json')
 
@@ -291,11 +292,22 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
     headers.set('Authorization', authorizationHeader)
   }
 
-  const response = await fetch(buildApiUrl(path), {
+  let response = await fetch(buildApiUrl(path), {
     ...init,
     credentials: 'include',
     headers,
   })
+
+  if (response.status === 401 && getStoredAuthTokens()?.refreshToken) {
+    const refreshedTokens = await refreshStoredAuthTokens()
+
+    headers.set('Authorization', `${refreshedTokens.tokenType || 'Bearer'} ${refreshedTokens.accessToken}`)
+    response = await fetch(buildApiUrl(path), {
+      ...init,
+      credentials: 'include',
+      headers,
+    })
+  }
 
   if (!response.ok) {
     throw new Error(await parseError(response))
