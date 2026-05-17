@@ -279,6 +279,17 @@ The admin app owns operational review of equipment taxonomy data that providers 
 ```http
 GET /internal/equipment-categories?locale=ru-RU
 GET /internal/equipment-categories/{categorySlug}/attributes?locale=ru-RU
+GET /internal/equipment-schema/options
+POST /internal/equipment-categories
+PATCH /internal/equipment-categories/{categoryId}
+GET /internal/equipment-attributes
+GET /internal/equipment-attributes/{attributeId}
+POST /internal/equipment-attributes
+PATCH /internal/equipment-attributes/{attributeId}
+POST /internal/equipment-categories/{categoryId}/attributes
+PATCH /internal/equipment-categories/{categoryId}/attributes/{attributeId}
+POST /internal/equipment-attributes/{attributeId}/allowed-values
+PATCH /internal/equipment-attributes/{attributeId}/allowed-values/{allowedValueId}
 GET /internal/equipment-brands/options
 GET /internal/equipment-brands?status=pending_review&query=North&page=1&pageSize=20
 GET /internal/equipment-brands/{brandId}
@@ -323,7 +334,7 @@ Response:
 ]
 ```
 
-The first seeded category is `bicycle`. The admin UI should not provide category editing yet unless a later API slice adds schema write endpoints.
+The first seeded category is `bicycle`.
 
 ### Equipment Attribute Schema
 
@@ -380,9 +391,360 @@ Field meaning:
 - `requiredOn`: scopes where the value is mandatory, for example `variant` or `unit`.
 - `appliesTo`: scopes where the value belongs.
 - `visibleWhen`: conditional rule. Example: show `motor_power_w` only when `bike_type` is `e_bike`.
-- `allowedValues`: enum options; admins should display `label` but reason about stable `valueKey`.
+- `allowedValues`: selectable values. For enum attributes they are the choices; for decimal wheel size they are still the selectable choices and the frontend should submit the selected `valueDecimal`.
 
-For `bicycle`, the provider-facing form is expected to include fields such as `brand`, `model`, `bike_type`, `frame_size`, `wheel_size`, `brake_type`, `drivetrain_type`, `suspension_type`, and conditional electric/suspension specs.
+For `bicycle`, the provider-facing form is expected to include fields such as `brand`, `model`, `bike_type`, `frame_size`, `wheel_size_in`, `brake_type`, `drivetrain_type`, `suspension_type`, and conditional electric/suspension specs. `wheel_size_in` stays decimal but exposes selectable values such as `12`, `14`, `16`, `18`, `20`, `24`, `26`, `27.5`, `28`, and `29`.
+
+### Equipment Schema Management
+
+The admin API now supports direct schema edits for categories, attribute definitions, category bindings, and enum allowed values. This is an operational admin surface, not a public/provider contract. Use it carefully: changing schemas changes provider inventory forms.
+
+There is no draft/publish workflow yet. Edits apply immediately. The frontend should make destructive-looking edits deliberate and visible.
+
+Load schema editing options:
+
+```http
+GET /internal/equipment-schema/options
+```
+
+Response:
+
+```json
+{
+  "categoryStatuses": [
+    { "value": "active", "label": "Active" },
+    { "value": "archived", "label": "Archived" }
+  ],
+  "attributeStatuses": [
+    { "value": "active", "label": "Active" },
+    { "value": "archived", "label": "Archived" }
+  ],
+  "valueTypes": [
+    { "value": "string", "label": "String" },
+    { "value": "enum", "label": "Enum" },
+    { "value": "decimal", "label": "Decimal" },
+    { "value": "integer", "label": "Integer" },
+    { "value": "boolean", "label": "Boolean" },
+    { "value": "datetime", "label": "Date/time" },
+    { "value": "reference", "label": "Reference" }
+  ],
+  "attributeScopes": [
+    { "value": "variant", "label": "Variant" },
+    { "value": "unit", "label": "Unit" }
+  ],
+  "referenceTypes": [
+    { "value": "equipment_brand", "label": "Equipment brand" }
+  ],
+  "resourceTypes": [
+    { "value": "equipment", "label": "Equipment" },
+    { "value": "experience", "label": "Experience" },
+    { "value": "service", "label": "Service" }
+  ],
+  "capacityModes": [
+    { "value": "inventory", "label": "Inventory" },
+    { "value": "scheduled_slot", "label": "Scheduled slot" }
+  ],
+  "allowedValueStatuses": [
+    { "value": "active", "label": "Active" },
+    { "value": "archived", "label": "Archived" }
+  ]
+}
+```
+
+Create category:
+
+```http
+POST /internal/equipment-categories
+```
+
+```json
+{
+  "slug": "snowboard",
+  "resourceType": "equipment",
+  "capacityMode": "inventory",
+  "status": "active",
+  "sortOrder": 20,
+  "translations": {
+    "ru-RU": {
+      "label": "Сноуборд",
+      "description": "Снаряжение для проката сноубордов"
+    },
+    "en-US": {
+      "label": "Snowboard",
+      "description": "Snowboard rental equipment"
+    }
+  }
+}
+```
+
+Patch category:
+
+```http
+PATCH /internal/equipment-categories/{categoryId}
+```
+
+```json
+{
+  "status": "active",
+  "sortOrder": 30,
+  "translations": {
+    "ru-RU": {
+      "label": "Сноуборды",
+      "description": "Прокат сноубордов"
+    }
+  }
+}
+```
+
+Category response:
+
+```json
+{
+  "categoryId": "00000000-0000-0000-0000-000000000601",
+  "slug": "snowboard",
+  "resourceType": "equipment",
+  "capacityMode": "inventory",
+  "status": "active",
+  "sortOrder": 30,
+  "translations": {
+    "ru-RU": {
+      "label": "Сноуборды",
+      "description": "Прокат сноубордов"
+    }
+  },
+  "createdAt": "2026-05-14T10:00:00Z",
+  "updatedAt": "2026-05-14T10:05:00Z"
+}
+```
+
+Category rules:
+
+- `slug` must use lowercase letters, numbers, and dashes.
+- Slugs are unique.
+- Current statuses are `active` and `archived`.
+- Patch only changes fields that are sent.
+
+List attributes:
+
+```http
+GET /internal/equipment-attributes?status=active&query=frame&page=1&pageSize=20
+```
+
+Get attribute:
+
+```http
+GET /internal/equipment-attributes/{attributeId}
+```
+
+Create attribute:
+
+```http
+POST /internal/equipment-attributes
+```
+
+```json
+{
+  "key": "boot_size",
+  "valueType": "enum",
+  "unit": null,
+  "referenceType": null,
+  "status": "active",
+  "translations": {
+    "ru-RU": {
+      "label": "Размер ботинка",
+      "helpText": "Маркировка размера у производителя",
+      "unitLabel": null
+    },
+    "en-US": {
+      "label": "Boot size",
+      "helpText": "Manufacturer size label",
+      "unitLabel": null
+    }
+  }
+}
+```
+
+Patch attribute:
+
+```http
+PATCH /internal/equipment-attributes/{attributeId}
+```
+
+```json
+{
+  "unit": "cm",
+  "translations": {
+    "ru-RU": {
+      "label": "Размер",
+      "unitLabel": "см"
+    }
+  }
+}
+```
+
+Attribute response:
+
+```json
+{
+  "attributeId": "00000000-0000-0000-0000-000000000701",
+  "key": "boot_size",
+  "valueType": "enum",
+  "unit": null,
+  "referenceType": null,
+  "status": "active",
+  "translations": {
+    "ru-RU": {
+      "label": "Размер ботинка",
+      "helpText": "Маркировка размера у производителя",
+      "unitLabel": null
+    }
+  },
+  "createdAt": "2026-05-14T10:00:00Z",
+  "updatedAt": "2026-05-14T10:00:00Z"
+}
+```
+
+Attribute rules:
+
+- `key` must use lowercase letters, numbers, and underscores.
+- Keys are unique.
+- `referenceType` is required only for `valueType: "reference"`.
+- Current reference type is `equipment_brand`.
+- The API blocks changing `valueType` or `referenceType` after variant/unit values exist for the attribute.
+
+Bind attribute to category:
+
+```http
+POST /internal/equipment-categories/{categoryId}/attributes
+```
+
+```json
+{
+  "attributeId": "00000000-0000-0000-0000-000000000701",
+  "requiredOn": ["variant"],
+  "appliesTo": ["variant"],
+  "visibleWhen": [],
+  "filterable": true,
+  "comparable": true,
+  "searchable": true,
+  "sortOrder": 10
+}
+```
+
+Patch category attribute binding:
+
+```http
+PATCH /internal/equipment-categories/{categoryId}/attributes/{attributeId}
+```
+
+```json
+{
+  "requiredOn": ["variant"],
+  "appliesTo": ["variant", "unit"],
+  "visibleWhen": [
+    {
+      "attributeKey": "bike_type",
+      "allowedValueKeys": ["e_bike"]
+    }
+  ],
+  "filterable": true,
+  "comparable": true,
+  "searchable": false,
+  "sortOrder": 40
+}
+```
+
+Binding response:
+
+```json
+{
+  "bindingId": "00000000-0000-0000-0000-000000000801",
+  "categoryId": "00000000-0000-0000-0000-000000000601",
+  "attributeId": "00000000-0000-0000-0000-000000000701",
+  "requiredOn": ["variant"],
+  "appliesTo": ["variant"],
+  "visibleWhen": [],
+  "filterable": true,
+  "comparable": true,
+  "searchable": true,
+  "sortOrder": 10,
+  "createdAt": "2026-05-14T10:00:00Z",
+  "updatedAt": "2026-05-14T10:00:00Z"
+}
+```
+
+Binding rules:
+
+- A category can bind an attribute only once.
+- `requiredOn` and `appliesTo` values are `variant` and/or `unit`.
+- `visibleWhen.attributeKey` references another attribute key in the same schema.
+- `visibleWhen.allowedValueKeys` references enum `valueKey` values.
+
+Create allowed value:
+
+```http
+POST /internal/equipment-attributes/{attributeId}/allowed-values
+```
+
+```json
+{
+  "valueKey": "size_42",
+  "valueString": "42",
+  "valueDecimal": null,
+  "valueInt": null,
+  "valueBool": null,
+  "sortOrder": 10,
+  "status": "active",
+  "labels": {
+    "ru-RU": "42",
+    "en-US": "42"
+  }
+}
+```
+
+Patch allowed value:
+
+```http
+PATCH /internal/equipment-attributes/{attributeId}/allowed-values/{allowedValueId}
+```
+
+```json
+{
+  "sortOrder": 20,
+  "status": "active",
+  "labels": {
+    "ru-RU": "EU 42"
+  }
+}
+```
+
+Allowed value response:
+
+```json
+{
+  "allowedValueId": "00000000-0000-0000-0000-000000000901",
+  "attributeId": "00000000-0000-0000-0000-000000000701",
+  "valueKey": "size_42",
+  "valueString": "42",
+  "valueDecimal": null,
+  "valueInt": null,
+  "valueBool": null,
+  "sortOrder": 10,
+  "status": "active",
+  "labels": {
+    "ru-RU": "42",
+    "en-US": "42"
+  },
+  "createdAt": "2026-05-14T10:00:00Z",
+  "updatedAt": "2026-05-14T10:00:00Z"
+}
+```
+
+Allowed value rules:
+
+- `valueKey` must use lowercase letters, numbers, and underscores.
+- `valueKey` is unique per attribute.
+- Use `status: "archived"` instead of deleting values that may already be referenced.
 
 ### Brand Review Queue
 
