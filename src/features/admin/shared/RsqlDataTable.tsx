@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, Filter, RotateCcw, Search, X } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
+import type { PaginationResponse } from '../adminApi'
 
 export type RsqlColumn<TRow> = {
   key: string
@@ -21,6 +22,13 @@ type SortDirection = 'asc' | 'desc' | ''
 type ColumnState = Record<string, { filter: string; sort: SortDirection }>
 type FlyoutPosition = { top: number; left: number }
 
+export type RsqlTableQuery = {
+  filter: string
+  sort: string
+  page: number
+  pageSize: number
+}
+
 type RsqlDataTableProps<TRow> = {
   rows: TRow[]
   columns: Array<RsqlColumn<TRow>>
@@ -30,7 +38,10 @@ type RsqlDataTableProps<TRow> = {
   onRefresh?: () => void
   pageSizeOptions?: number[]
   initialPageSize?: number
+  initialSort?: string
   onRowOpen?: (row: TRow) => void
+  pagination?: PaginationResponse
+  onQueryChange?: (query: RsqlTableQuery) => void
 }
 
 function escapeRsqlValue(value: string) {
@@ -89,6 +100,29 @@ function buildSort(columns: Array<RsqlColumn<unknown>>, columnState: ColumnState
   }).join(',')
 }
 
+function buildColumnState<TRow>(columns: Array<RsqlColumn<TRow>>, sortExpression?: string) {
+  const state = columns.reduce((currentState, column) => {
+    currentState[column.key] = { filter: '', sort: '' }
+    return currentState
+  }, {} as ColumnState)
+
+  if (!sortExpression) {
+    return state
+  }
+
+  sortExpression.split(',').map((value) => value.trim()).filter(Boolean).forEach((sortField) => {
+    const direction: SortDirection = sortField.startsWith('-') ? 'desc' : 'asc'
+    const field = sortField.replace(/^-/, '')
+    const column = columns.find((candidate) => candidate.field === field)
+
+    if (column) {
+      state[column.key].sort = direction
+    }
+  })
+
+  return state
+}
+
 export function RsqlDataTable<TRow>({
   rows,
   columns,
@@ -98,14 +132,12 @@ export function RsqlDataTable<TRow>({
   onRefresh,
   pageSizeOptions = [10, 20, 50],
   initialPageSize = 20,
+  initialSort,
   onRowOpen,
+  pagination,
+  onQueryChange,
 }: RsqlDataTableProps<TRow>) {
-  const emptyState = useMemo(() => {
-    return columns.reduce((state, column) => {
-      state[column.key] = { filter: '', sort: '' }
-      return state
-    }, {} as ColumnState)
-  }, [columns])
+  const emptyState = useMemo(() => buildColumnState(columns), [columns])
   const [columnState, setColumnState] = useState<ColumnState>(emptyState)
   const [activeColumn, setActiveColumn] = useState<RsqlColumn<TRow> | null>(null)
   const [flyoutPosition, setFlyoutPosition] = useState<FlyoutPosition | null>(null)
@@ -113,6 +145,10 @@ export function RsqlDataTable<TRow>({
   const [sortDraft, setSortDraft] = useState<SortDirection>('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(initialPageSize)
+  const isServerBacked = Boolean(onQueryChange)
+  const onQueryChangeRef = useRef(onQueryChange)
+  const appliedInitialSortRef = useRef('')
+  const appliedInitialPageSizeRef = useRef(initialPageSize)
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) =>
@@ -148,11 +184,52 @@ export function RsqlDataTable<TRow>({
     })
   }, [columnState, columns, filteredRows])
 
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize))
-  const safePage = Math.min(page, totalPages)
-  const pageRows = sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize)
   const rsql = buildRsql(columns as Array<RsqlColumn<unknown>>, columnState)
   const sort = buildSort(columns as Array<RsqlColumn<unknown>>, columnState)
+  const totalItems = pagination?.totalItems ?? sortedRows.length
+  const totalPages = Math.max(1, pagination?.totalPages ?? Math.ceil(sortedRows.length / pageSize))
+  const safePage = Math.min(pagination?.page ?? page, totalPages)
+  const pageRows = isServerBacked ? rows : sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize)
+  const displayedItems = isServerBacked ? rows.length : sortedRows.length
+  const hasPreviousPage = pagination?.hasPreviousPage ?? safePage > 1
+  const hasNextPage = pagination?.hasNextPage ?? safePage < totalPages
+
+  useEffect(() => {
+    onQueryChangeRef.current = onQueryChange
+  }, [onQueryChange])
+
+  useEffect(() => {
+    if (!initialSort || appliedInitialSortRef.current === initialSort) {
+      return
+    }
+
+    appliedInitialSortRef.current = initialSort
+    setColumnState(buildColumnState(columns, initialSort))
+    setPage(1)
+  }, [columns, initialSort])
+
+  useEffect(() => {
+    if (appliedInitialPageSizeRef.current === initialPageSize) {
+      return
+    }
+
+    appliedInitialPageSizeRef.current = initialPageSize
+    setPageSize(initialPageSize)
+    setPage(1)
+  }, [initialPageSize])
+
+  useEffect(() => {
+    if (!onQueryChangeRef.current) {
+      return
+    }
+
+    onQueryChangeRef.current({
+      filter: rsql,
+      sort,
+      page,
+      pageSize,
+    })
+  }, [page, pageSize, rsql, sort])
 
   function openColumn(column: RsqlColumn<TRow>, anchor: HTMLElement) {
     const state = columnState[column.key] ?? { filter: '', sort: '' }
@@ -190,11 +267,16 @@ export function RsqlDataTable<TRow>({
     setPage(1)
   }
 
+  function changePageSize(nextPageSize: number) {
+    setPageSize(nextPageSize)
+    setPage(1)
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
         <div className="min-w-0 text-xs text-muted-foreground">
-          <span>{sortedRows.length} / {rows.length}</span>
+          <span>{displayedItems} / {totalItems}</span>
           {rsql ? <span className="ml-2 hidden truncate md:inline">фильтр: {rsql}</span> : null}
           {sort ? <span className="ml-2 hidden truncate md:inline">сортировка: {sort}</span> : null}
         </div>
@@ -280,19 +362,16 @@ export function RsqlDataTable<TRow>({
           <select
             className="h-8 rounded-md border bg-card px-2 text-sm outline-none"
             value={pageSize}
-            onChange={(event) => {
-              setPageSize(Number(event.target.value))
-              setPage(1)
-            }}
+            onChange={(event) => changePageSize(Number(event.target.value))}
           >
             {pageSizeOptions.map((option) => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
-          <Button type="button" variant="ghost" size="sm" disabled={safePage <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>
+          <Button type="button" variant="ghost" size="sm" disabled={loading || !hasPreviousPage} onClick={() => setPage((value) => Math.max(1, value - 1))}>
             Назад
           </Button>
-          <Button type="button" variant="ghost" size="sm" disabled={safePage >= totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
+          <Button type="button" variant="ghost" size="sm" disabled={loading || !hasNextPage} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>
             Вперед
           </Button>
         </div>

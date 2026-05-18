@@ -1588,10 +1588,35 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserSummaryResponse"
-                  }
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfUserSummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/users/options": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalUserManagementGetUsersOptionsEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserManagementOptionsResponse"
                 }
               }
             }
@@ -2399,6 +2424,34 @@
         ]
       }
     },
+    "/internal/providers/governance/options": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalProviderProfileGetProviderGovernanceOptionsEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceOptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
     "/internal/providers/governance": {
       "get": {
         "tags": [
@@ -2411,10 +2464,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceSummaryResponse"
-                  }
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceListResponse"
                 }
               }
             }
@@ -6174,6 +6224,28 @@
         "type": "object",
         "additionalProperties": false
       },
+      "RsqlParserNetLinqRsqlPagedResultOfUserSummaryResponse": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserSummaryResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
+      },
       "EbashITSportgearhubApiModelsInternalUserManagementUserSummaryResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -6209,6 +6281,143 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "RsqlParserNetLinqRsqlPagination": {
+        "type": "object",
+        "description": "Describes the pagination state for a paged result.",
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Gets the one-based current page number.",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "description": "Gets the requested page size.",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "description": "Gets the total number of matching items before paging.",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "description": "Gets the total number of pages.",
+            "format": "int64"
+          },
+          "hasPreviousPage": {
+            "type": "boolean",
+            "description": "Gets a value indicating whether a previous page exists."
+          },
+          "hasNextPage": {
+            "type": "boolean",
+            "description": "Gets a value indicating whether a next page exists."
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalUserManagementUserManagementOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "filterFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserManagementFilterFieldResponse"
+            }
+          },
+          "sortFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserManagementSortFieldResponse"
+            }
+          },
+          "filterExamples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserManagementFilterExampleResponse"
+            }
+          },
+          "sortExamples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaultSort": {
+            "type": "string"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserManagementPaginationOptionsResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalUserManagementUserManagementFilterFieldResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "operators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalUserManagementUserManagementSortFieldResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalUserManagementUserManagementFilterExampleResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "filter": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalUserManagementUserManagementPaginationOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defaultPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultPageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPageSize": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -7219,41 +7428,6 @@
           }
         }
       },
-      "RsqlParserNetLinqRsqlPagination": {
-        "type": "object",
-        "description": "Describes the pagination state for a paged result.",
-        "additionalProperties": false,
-        "properties": {
-          "page": {
-            "type": "integer",
-            "description": "Gets the one-based current page number.",
-            "format": "int32"
-          },
-          "pageSize": {
-            "type": "integer",
-            "description": "Gets the requested page size.",
-            "format": "int32"
-          },
-          "totalItems": {
-            "type": "integer",
-            "description": "Gets the total number of matching items before paging.",
-            "format": "int64"
-          },
-          "totalPages": {
-            "type": "integer",
-            "description": "Gets the total number of pages.",
-            "format": "int64"
-          },
-          "hasPreviousPage": {
-            "type": "boolean",
-            "description": "Gets a value indicating whether a previous page exists."
-          },
-          "hasNextPage": {
-            "type": "boolean",
-            "description": "Gets a value indicating whether a next page exists."
-          }
-        }
-      },
       "EbashITSportgearhubApiModelsProviderProfileProviderOnboardingResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -7895,6 +8069,117 @@
         "type": "object",
         "additionalProperties": false
       },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "filterFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceFilterFieldResponse"
+            }
+          },
+          "sortFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceSortFieldResponse"
+            }
+          },
+          "filterExamples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceFilterExampleResponse"
+            }
+          },
+          "sortExamples": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "defaultSort": {
+            "type": "string"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernancePaginationOptionsResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceFilterFieldResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceSortFieldResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceFilterExampleResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "queryString": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernancePaginationOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defaultPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultPageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceSummaryResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernancePaginationResponse"
+          }
+        }
+      },
       "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernanceSummaryResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -7969,6 +8254,34 @@
           "acquiringOnboardingStatus": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalProviderProfileProviderGovernancePaginationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
           }
         }
       },

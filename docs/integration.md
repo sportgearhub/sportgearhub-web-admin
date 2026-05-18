@@ -1,1100 +1,469 @@
-# Sportgearhub Web Admin Integration
+# Sportgearhub Web Admin Console Product Brief
 
-This is the single structured API integration file for the admin web app.
+This file is a repo-local product brief for building `sportgearhub-web-admin`.
 
-Use this file for endpoint wiring and admin-specific auth payloads. Keep deployment details in `docs/deployment.md`.
+The admin console is the internal/operator workspace. It is not the public customer app and not the provider console.
 
-## App Identity
+## Product Goal
 
-The admin web app is hosted at:
+Build a serious internal operations console for Sportgearhub.
 
-```text
-https://admin.sportgearhub.ru
-```
+The first prototype should support:
 
-When an admin auth flow asks the API to send an email link, use:
+- admin authentication and role validation
+- provider onboarding review
+- provider governance
+- go-live readiness
+- user lookup
+- booking/payment/reconciliation inspection
+- fulfillment and operational case visibility
+- canonicalization and capability drift surfaces where useful
+
+Do not build payout-method onboarding yet unless explicitly requested later.
+
+## Main Users
+
+- platform admin
+- provider onboarding reviewer
+- operations manager
+- reconciliation operator
+- finance/control operator
+
+## Source Material
+
+Use these local files as references:
+
+- `admin-web-api.md`
+- `docs/internal-platform-api-surface.v1.md`
+- `docs/provider-console-api-surface.v1.md`
+- `docs/platform-api-readiness-checklist.v1.md`
+- `docs/flows/sign-in-provider-onboarding.md`
+- `docs/architecture/questions.md`
+
+## Architecture Rules
+
+- Internal console may expose workflow-aware state, but must preserve domain boundaries.
+- Provider onboarding review must not collapse `ProviderOnboardingApplication` into `Provider`.
+- Approval creates `Provider` and owner `ProviderMembership`.
+- Search documents and summaries are projections only.
+- Ledger/payment/settlement views are inspection/control surfaces, not random mutation surfaces.
+- Do not create new support incident authority; human support stays external and links back to owning surfaces.
+
+## Auth And Access
+
+Admin console must require:
+
+- authenticated user
+- `Admin` role
+- `internal_api` scope
+
+Expected client:
+
+- OIDC client id `sportgearhub-web-admin`
+- callback such as `http://localhost:3001/auth/callback`
+- scopes: `openid profile email offline_access internal_api`
+
+## Admin User Bootstrap
+
+The first admin user is initialized by the backend from configuration.
+
+Backend responsibility:
+
+- read `AdminBootstrap` configuration
+- create or update the configured user identity
+- assign `Admin` role
+- optionally bind the configured external auth provider and external id
+- keep this role assignment out of frontend control
+
+Web responsibility:
+
+- show normal admin sign-in
+- after callback, validate user has `Admin` role and `internal_api` scope
+- show a clear forbidden state if the configured backend admin identity does not match the signed-in external identity
+- never decide admin eligibility in frontend state
+
+Do not build first-run admin registration in the web app.
+
+Do not implement “first user to register becomes admin.” That is convenient, but too dangerous once deployed.
+
+Development shortcut:
+
+- local config may seed `admin@sportgearhub.local` and a known external auth binding
+- admin console can document the expected local sign-in identity
+- never ship dev-only external ids or local placeholder identity to production
+
+## Auth App Decision
+
+Do not create a separate auth web app yet.
+
+Recommended now:
+
+- one shared API/OIDC authority
+- each web app owns its login entry and callback route
+- customer app requests `public_api`
+- provider console requests `provider_api`
+- admin console requests `internal_api`
+
+This keeps deployment simple while preserving API-surface separation.
+
+Future option:
+
+- introduce a shared `sportgearhub-web-auth` only if branding, SSO complexity, MFA, organization switching, or multiple app redirects become painful
+
+## Admin Console Shell
+
+Required:
+
+- internal-only authenticated layout
+- role/scope guard
+- environment marker
+- sidebar navigation
+- global search placeholder
+- operator identity
+- safe forbidden state
+- audit-aware action confirmations
+
+Suggested navigation:
+
+- Overview
+- Provider Onboarding
+- Provider Governance
+- Go-Live Readiness
+- Users
+- Bookings
+- Payments
+- Refund Cases
+- Reservations
+- Workflows
+- Reconciliation
+- Settlements
+- Ledger
+- Capability Drift
+- Canonicalization
+- System
+
+## 1. Overview
+
+Purpose:
+
+- show operational queues and launch blockers
+
+Widgets:
+
+- onboarding applications pending review
+- providers blocked from go-live
+- reconciliation incidents
+- payment/refund cases requiring attention
+- workflow recovery queue
+- ledger repair warnings
+- capability drift queue
+- persistence/readiness warnings
+
+Prototype rule:
+
+- if exact aggregate endpoints are missing, build the overview from individual queue endpoints or mark widget `pending_api`
+
+## 2. Provider Onboarding Review
+
+Use:
+
+- `GET /internal/provider-onboarding/{applicationId}`
+- `POST /internal/provider-onboarding/{applicationId}/actions`
+- provider governance queue endpoints where available
+
+Required:
+
+- pending applications list
+- application detail
+- legal identity panel
+- applicant user panel
+- checklist
+- review note
+- actions: `approve`, `request-changes`, `reject`, `suspend` where supported
+- after approval, show created provider and owner membership
+
+Important:
+
+- approval creates provider truth; do not let admin UI edit approved provider legal identity through ordinary profile fields
+
+## 3. Provider Governance
+
+Use:
+
+- `GET /internal/providers/governance?filter=<rsql>&sort=<fields>&page=1&pageSize=20`
+- `GET /internal/providers/governance/options`
+- `POST /internal/providers/{providerId}/governance/actions`
+- `GET /internal/providers/{providerId}/profile`
+- `GET /internal/providers/{providerId}/operating-state`
+- `GET /internal/providers/{providerId}/memberships`
+
+Required:
+
+- provider governance queue
+- server-side filter, sort, and pagination
+- backend-provided filter fields, sort fields, default sort, and pagination limits
+- full provider profile detail
+- operating state
+- capability, settlement, and governance status panels
+- diagnostics explaining why a provider is blocked, warning, or ready when available
+- provider memberships in read-only mode until write commands exist
+- lifecycle actions: `activate`, `resume_review`, and `archive`
+- reason/comment capture for actions that require it
+- audit timeline placeholder for status changes, holds, operator comments, and readiness decisions
+
+Governance action request:
 
 ```json
 {
-  "app": "admin"
-}
-```
-
-The API maps this app value to its backend-owned `Email:AdminConsoleBaseUrl` setting. Do not send arbitrary return URLs from the web app.
-
-For production, `Email:AdminConsoleBaseUrl` must be:
-
-```text
-https://admin.sportgearhub.ru
-```
-
-All admin auth email links generated by the API must use that domain. They must not point to the public marketplace web domain, the provider web domain, localhost, or an API host.
-
-## Auth Link Routing
-
-The admin web app owns these auth routes:
-
-```text
-https://admin.sportgearhub.ru/sign-in
-https://admin.sportgearhub.ru/auth/forgot-password
-https://admin.sportgearhub.ru/auth/reset-password?token=...
-https://admin.sportgearhub.ru/auth/verify-email?token=...
-```
-
-After successful sign-in, the admin workspace route is:
-
-```text
-https://admin.sportgearhub.ru/console
-```
-
-The fallback sign-in aliases `/login`, `/auth/sign-in`, and `/auth/login` are accepted by the frontend and should reset the active admin session. New API-generated links should prefer `/sign-in`.
-
-The frontend calls API endpoints against same-origin paths by default. Set `VITE_API_BASE_URL` when an environment needs an explicit API origin or when the admin host does not proxy `/api` and `/internal` to the API. The value must not change the admin email link domain.
-
-Admin OpenAPI document:
-
-```text
-/swagger/admin/swagger.json
-```
-
-The Swagger UI is still served at `/swagger` when the API enables Swagger.
-
-The generated OpenAPI document lists the OIDC token endpoints as `204` because OpenIddict owns the form-encoded token exchange at runtime. Use the token envelope documented below for frontend integration.
-
-Backend persistence is organized by PostgreSQL bounded-context schemas: `auth`, `catalog`, `provider`, `inventory`, `booking`, `payments`, `operations`, and `equipment`. This is operational structure only and does not change admin route paths.
-
-## Provider Catalog And Media Notes
-
-Provider resource and offer authoring are owned by the provider console API surface, not the admin app.
-
-Current provider-web contracts live in:
-
-- `sportgearhub-web-provider/docs/integration.md`
-
-Admin screens should not call `/api/v1/provider/*` for provider-owned resource authoring unless a separate admin/operator workflow is explicitly added. Use `/internal/*` surfaces for admin review, diagnostics, moderation, and operator actions.
-
-If a future admin screen displays provider resource or offer cards, use the read-model media projection returned by the API:
-
-```json
-{
-  "mediaPreviewUrl": "/api/v1/media/provider-resource-images/5513d83986374f91b577f46793b61f9e"
-}
-```
-
-Rules:
-
-- treat `mediaPreviewUrl` as a display projection only
-- do not construct URLs from storage paths, provider ids, resource ids, or stored file names
-- uploaded provider resource images are served through `/api/v1/media/provider-resource-images/{imageId}`
-- do not edit provider resource images from admin UI until an explicit internal moderation/media workflow exists
-
-## Sign In And Tokens
-
-Admin sign-in uses the OIDC password grant through the login alias:
-
-```http
-POST /api/v1/auth/login
-Content-Type: application/x-www-form-urlencoded
-```
-
-Form body:
-
-```text
-grant_type=password
-client_id=sportgearhub-web-admin
-username=<admin-email>
-password=<admin-password>
-scope=openid profile email offline_access roles internal_api
-```
-
-Do not send JSON `{ "email": "...", "password": "..." }` to `/api/v1/auth/login`. That path is now an OIDC token endpoint and rejects `application/json` with `invalid_request`.
-
-The response is the OpenIddict token envelope:
-
-```json
-{
-  "access_token": "...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "...",
-  "id_token": "..."
-}
-```
-
-Store the token response in the admin auth state. Call admin APIs with:
-
-```http
-Authorization: Bearer <access_token>
-```
-
-`/internal/*` requires both the `Admin` role and the `internal_api` scope. Cookie-only login is not enough for admin review APIs.
-
-The generated OpenAPI document also includes:
-
-```http
-POST /api/v1/auth/session-login
-POST /api/auth/session-login
-```
-
-Those endpoints accept the legacy JSON local-login payload and return an auth user response for cookie/session flows. The admin web app must not use them for the main sign-in flow because they do not provide the bearer token required by `/internal/*`.
-
-### Refresh Token
-
-Refresh uses the same token endpoint alias:
-
-```http
-POST /api/v1/auth/login
-Content-Type: application/x-www-form-urlencoded
-```
-
-Form body:
-
-```text
-grant_type=refresh_token
-client_id=sportgearhub-web-admin
-refresh_token=<refresh-token-from-login>
-```
-
-The response is a new OpenIddict token envelope. Replace the stored access token, refresh token, and id token with the new values.
-
-The API also supports the canonical OIDC endpoint:
-
-```http
-POST /connect/token
-```
-
-## Password Reset
-
-```http
-POST /api/v1/auth/password/forgot
-```
-
-Request:
-
-```json
-{
-  "email": "<admin-email>",
-  "app": "admin"
-}
-```
-
-Frontend behavior:
-
-- collect the admin email at `/auth/forgot-password`
-- always show generic success copy
-- expect email links to land on `https://admin.sportgearhub.ru/auth/reset-password?token=...`
-- complete the reset with `POST /api/v1/auth/password/reset`
-
-Reset request:
-
-```json
-{
-  "token": "email-link-token",
-  "newPassword": "new-admin-password"
-}
-```
-
-Use the `newPassword` property name from the OpenAPI schema. Do not send `password` for reset completion.
-
-## Email Verification
-
-Admin users are normally bootstrapped by backend configuration, not registered by the admin web app.
-
-If an admin verification resend screen is ever needed, use:
-
-```http
-POST /api/v1/auth/email/verification
-```
-
-Request:
-
-```json
-{
-  "email": "<admin-email>",
-  "app": "admin"
-}
-```
-
-Expected callback route:
-
-```text
-https://admin.sportgearhub.ru/auth/verify-email?token=...
-```
-
-## Provider Onboarding Review
-
-The API has a minimal internal review surface for submitted provider onboarding applications.
-
-```http
-GET /internal/provider-onboarding/options
-GET /internal/provider-onboarding?filter=status=in=(submitted,in_review)&sort=-submittedAt&page=1&pageSize=20
-GET /internal/provider-onboarding/{applicationId}
-POST /internal/provider-onboarding/{applicationId}/actions
-```
-
-Use `GET /internal/provider-onboarding/options` to populate available filter fields, sort fields, enum values, and examples. The list route supports:
-
-- `filter`: RSQL expression over the option fields
-- `sort`: comma-separated field names, prefix descending fields with `-`
-- `page`, `pageSize`: default API paging model, with server-side maximum page size
-
-Useful RSQL forms:
-
-```text
-status=in=(submitted,in_review)
-displayName==*rent*
-displayName==Sport*
-displayName=contains=rent
-displayName=starts=Sport
-displayName=ends=Rentals
-submittedAt>=2026-05-01T00:00:00Z
-status==submitted;taxNumber==7707083893
-```
-
-`*` wildcards work with string equality: `name==B*` starts with, `name==*t*` contains, and `name==*x` ends with.
-
-The list endpoint is the review queue entry point. It returns:
-
-```json
-{
-  "items": [
-    {
-      "applicationId": "00000000-0000-0000-0000-000000000001",
-      "applicantUserId": "00000000-0000-0000-0000-000000000002",
-      "providerId": null,
-      "status": "submitted",
-      "displayName": "Sportgearhub Rentals",
-      "legalName": "ООО Спортгирхаб",
-      "legalCountryCode": "RU",
-      "legalForm": "company",
-      "taxNumber": "7707083893",
-      "submittedAt": "2026-05-13T10:00:00Z",
-      "updatedAt": "2026-05-13T10:00:00Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "totalItems": 1,
-    "totalPages": 1,
-    "hasPreviousPage": false,
-    "hasNextPage": false
-  }
-}
-```
-
-If no `filter` is sent, the API defaults the list to the review queue statuses `submitted` and `in_review`.
-
-Action request:
-
-```json
-{
-  "action": "approve",
+  "action": "activate",
   "reasonCode": null,
   "comments": null
 }
 ```
 
-Supported actions are `approve`, `request_changes`, and `reject`. `request_changes` and `reject` require `reasonCode`.
+Supported actions:
 
-## Equipment Taxonomy Review
+- `activate`
+- `resume_review` or `resume-review`; requires `reasonCode`
+- `archive`; requires `reasonCode`
 
-The admin app owns operational review of equipment taxonomy data that providers can use in inventory intake. Category schemas are read-only in this slice; brand review is writable.
+Missing management pieces:
 
-```http
-GET /internal/equipment-categories?locale=ru-RU
-GET /internal/equipment-categories/{categorySlug}/attributes?locale=ru-RU
-GET /internal/equipment-schema/options
-POST /internal/equipment-categories
-PATCH /internal/equipment-categories/{categoryId}
-GET /internal/equipment-attributes
-GET /internal/equipment-attributes/{attributeId}
-POST /internal/equipment-attributes
-PATCH /internal/equipment-attributes/{attributeId}
-POST /internal/equipment-categories/{categoryId}/attributes
-PATCH /internal/equipment-categories/{categoryId}/attributes/{attributeId}
-POST /internal/equipment-attributes/{attributeId}/allowed-values
-PATCH /internal/equipment-attributes/{attributeId}/allowed-values/{allowedValueId}
-GET /internal/equipment-brands/options
-GET /internal/equipment-brands?status=pending_review&query=North&page=1&pageSize=20
-GET /internal/equipment-brands/{brandId}
-GET /internal/equipment-brands/{brandId}/merge-candidates?limit=10
-PATCH /internal/equipment-brands/{brandId}
-POST /internal/equipment-brands/{brandId}/actions
-```
+- invite user, change role, and remove provider access
+- clearer diagnostics drilldown where current diagnostics are only summary-level
+- links to resources, offers, media, bookings, and payments through internal read/review surfaces
+- provider governance action history endpoint
 
-All endpoints require:
+## 4. Go-Live Readiness
 
-```http
-Authorization: Bearer <access_token>
-```
+Use:
 
-The token must have the `Admin` role and `internal_api` scope.
+- `GET /internal/providers/{providerId}/go-live-readiness`
+- `POST /internal/providers/{providerId}/go-live/actions`
 
-### Equipment Categories
+Required:
 
-Use categories to show what provider inventory schemas currently exist.
+- readiness checklist
+- blockers
+- hold/release controls using `hold` and `clear_hold`
+- resource and offer readiness links
+- financial/acquiring readiness panel
+- capability drift context when returned by the API
+- recommended actions from the API response
 
-```http
-GET /internal/equipment-categories?locale=ru-RU
-```
-
-Response:
-
-```json
-[
-  {
-    "categoryId": "00000000-0000-0000-0000-000000000001",
-    "slug": "bicycle",
-    "label": "Велосипед",
-    "labels": {
-      "ru-RU": "Велосипед",
-      "en-US": "Bicycle"
-    },
-    "resourceType": "equipment",
-    "capacityMode": "inventory",
-    "status": "active",
-    "sortOrder": 10
-  }
-]
-```
-
-The first seeded category is `bicycle`.
-
-### Equipment Attribute Schema
-
-Use the schema endpoint to inspect which fields provider inventory forms are built from.
-
-```http
-GET /internal/equipment-categories/bicycle/attributes?locale=ru-RU
-```
-
-Response shape:
+Go-live action request:
 
 ```json
 {
-  "category": {
-    "categoryId": "00000000-0000-0000-0000-000000000001",
-    "slug": "bicycle",
-    "label": "Велосипед",
-    "resourceType": "equipment",
-    "capacityMode": "inventory",
-    "status": "active",
-    "sortOrder": 10
-  },
-  "attributes": [
-    {
-      "attributeId": "00000000-0000-0000-0000-000000000101",
-      "key": "brand",
-      "label": "Бренд",
-      "labels": {
-        "ru-RU": "Бренд",
-        "en-US": "Brand"
-      },
-      "valueType": "reference",
-      "unit": null,
-      "unitLabel": null,
-      "referenceType": "equipment_brand",
-      "requiredOn": ["variant"],
-      "appliesTo": ["variant"],
-      "visibleWhen": [],
-      "filterable": true,
-      "comparable": true,
-      "searchable": true,
-      "sortOrder": 10,
-      "allowedValues": []
-    }
-  ]
+  "action": "hold",
+  "reasonCode": "manual_review",
+  "comments": "Waiting for operator review."
 }
 ```
 
-Field meaning:
-
-- `key`: stable machine key.
-- `valueType`: input type, including `string`, `enum`, `decimal`, `integer`, `boolean`, `datetime`, and `reference`.
-- `referenceType: "equipment_brand"`: provider forms use the brand directory.
-- `requiredOn`: scopes where the value is mandatory, for example `variant` or `unit`.
-- `appliesTo`: scopes where the value belongs.
-- `visibleWhen`: conditional rule. Example: show `motor_power_w` only when `bike_type` is `e_bike`.
-- `allowedValues`: selectable values. For enum attributes they are the choices; for decimal wheel size they are still the selectable choices and the frontend should submit the selected `valueDecimal`.
-
-For `bicycle`, the provider-facing form is expected to include fields such as `brand`, `model`, `bike_type`, `frame_size`, `wheel_size_in`, `brake_type`, `drivetrain_type`, `suspension_type`, and conditional electric/suspension specs. `wheel_size_in` stays decimal but exposes selectable values such as `12`, `14`, `16`, `18`, `20`, `24`, `26`, `27.5`, `28`, and `29`.
-
-### Equipment Schema Management
-
-The admin API now supports direct schema edits for categories, attribute definitions, category bindings, and enum allowed values. This is an operational admin surface, not a public/provider contract. Use it carefully: changing schemas changes provider inventory forms.
-
-There is no draft/publish workflow yet. Edits apply immediately. The frontend should make destructive-looking edits deliberate and visible.
-
-Load schema editing options:
-
-```http
-GET /internal/equipment-schema/options
-```
-
-Response:
-
-```json
-{
-  "categoryStatuses": [
-    { "value": "active", "label": "Active" },
-    { "value": "archived", "label": "Archived" }
-  ],
-  "attributeStatuses": [
-    { "value": "active", "label": "Active" },
-    { "value": "archived", "label": "Archived" }
-  ],
-  "valueTypes": [
-    { "value": "string", "label": "String" },
-    { "value": "enum", "label": "Enum" },
-    { "value": "decimal", "label": "Decimal" },
-    { "value": "integer", "label": "Integer" },
-    { "value": "boolean", "label": "Boolean" },
-    { "value": "datetime", "label": "Date/time" },
-    { "value": "reference", "label": "Reference" }
-  ],
-  "attributeScopes": [
-    { "value": "variant", "label": "Variant" },
-    { "value": "unit", "label": "Unit" }
-  ],
-  "referenceTypes": [
-    { "value": "equipment_brand", "label": "Equipment brand" }
-  ],
-  "resourceTypes": [
-    { "value": "equipment", "label": "Equipment" },
-    { "value": "experience", "label": "Experience" },
-    { "value": "service", "label": "Service" }
-  ],
-  "capacityModes": [
-    { "value": "inventory", "label": "Inventory" },
-    { "value": "scheduled_slot", "label": "Scheduled slot" }
-  ],
-  "allowedValueStatuses": [
-    { "value": "active", "label": "Active" },
-    { "value": "archived", "label": "Archived" }
-  ]
-}
-```
-
-Create category:
-
-```http
-POST /internal/equipment-categories
-```
-
-```json
-{
-  "slug": "snowboard",
-  "resourceType": "equipment",
-  "capacityMode": "inventory",
-  "status": "active",
-  "sortOrder": 20,
-  "translations": {
-    "ru-RU": {
-      "label": "Сноуборд",
-      "description": "Снаряжение для проката сноубордов"
-    },
-    "en-US": {
-      "label": "Snowboard",
-      "description": "Snowboard rental equipment"
-    }
-  }
-}
-```
-
-Patch category:
-
-```http
-PATCH /internal/equipment-categories/{categoryId}
-```
-
-```json
-{
-  "status": "active",
-  "sortOrder": 30,
-  "translations": {
-    "ru-RU": {
-      "label": "Сноуборды",
-      "description": "Прокат сноубордов"
-    }
-  }
-}
-```
-
-Category response:
-
-```json
-{
-  "categoryId": "00000000-0000-0000-0000-000000000601",
-  "slug": "snowboard",
-  "resourceType": "equipment",
-  "capacityMode": "inventory",
-  "status": "active",
-  "sortOrder": 30,
-  "translations": {
-    "ru-RU": {
-      "label": "Сноуборды",
-      "description": "Прокат сноубордов"
-    }
-  },
-  "createdAt": "2026-05-14T10:00:00Z",
-  "updatedAt": "2026-05-14T10:05:00Z"
-}
-```
-
-Category rules:
-
-- `slug` must use lowercase letters, numbers, and dashes.
-- Slugs are unique.
-- Current statuses are `active` and `archived`.
-- Patch only changes fields that are sent.
-
-List attributes:
-
-```http
-GET /internal/equipment-attributes?status=active&query=frame&page=1&pageSize=20
-```
-
-Get attribute:
-
-```http
-GET /internal/equipment-attributes/{attributeId}
-```
-
-Create attribute:
-
-```http
-POST /internal/equipment-attributes
-```
-
-```json
-{
-  "key": "boot_size",
-  "valueType": "enum",
-  "unit": null,
-  "referenceType": null,
-  "status": "active",
-  "translations": {
-    "ru-RU": {
-      "label": "Размер ботинка",
-      "helpText": "Маркировка размера у производителя",
-      "unitLabel": null
-    },
-    "en-US": {
-      "label": "Boot size",
-      "helpText": "Manufacturer size label",
-      "unitLabel": null
-    }
-  }
-}
-```
-
-Patch attribute:
-
-```http
-PATCH /internal/equipment-attributes/{attributeId}
-```
-
-```json
-{
-  "unit": "cm",
-  "translations": {
-    "ru-RU": {
-      "label": "Размер",
-      "unitLabel": "см"
-    }
-  }
-}
-```
-
-Attribute response:
-
-```json
-{
-  "attributeId": "00000000-0000-0000-0000-000000000701",
-  "key": "boot_size",
-  "valueType": "enum",
-  "unit": null,
-  "referenceType": null,
-  "status": "active",
-  "translations": {
-    "ru-RU": {
-      "label": "Размер ботинка",
-      "helpText": "Маркировка размера у производителя",
-      "unitLabel": null
-    }
-  },
-  "createdAt": "2026-05-14T10:00:00Z",
-  "updatedAt": "2026-05-14T10:00:00Z"
-}
-```
-
-Attribute rules:
-
-- `key` must use lowercase letters, numbers, and underscores.
-- Keys are unique.
-- `referenceType` is required only for `valueType: "reference"`.
-- Current reference type is `equipment_brand`.
-- The API blocks changing `valueType` or `referenceType` after variant/unit values exist for the attribute.
-
-Bind attribute to category:
-
-```http
-POST /internal/equipment-categories/{categoryId}/attributes
-```
-
-```json
-{
-  "attributeId": "00000000-0000-0000-0000-000000000701",
-  "requiredOn": ["variant"],
-  "appliesTo": ["variant"],
-  "visibleWhen": [],
-  "filterable": true,
-  "comparable": true,
-  "searchable": true,
-  "sortOrder": 10
-}
-```
-
-Patch category attribute binding:
-
-```http
-PATCH /internal/equipment-categories/{categoryId}/attributes/{attributeId}
-```
-
-```json
-{
-  "requiredOn": ["variant"],
-  "appliesTo": ["variant", "unit"],
-  "visibleWhen": [
-    {
-      "attributeKey": "bike_type",
-      "allowedValueKeys": ["e_bike"]
-    }
-  ],
-  "filterable": true,
-  "comparable": true,
-  "searchable": false,
-  "sortOrder": 40
-}
-```
-
-Binding response:
-
-```json
-{
-  "bindingId": "00000000-0000-0000-0000-000000000801",
-  "categoryId": "00000000-0000-0000-0000-000000000601",
-  "attributeId": "00000000-0000-0000-0000-000000000701",
-  "requiredOn": ["variant"],
-  "appliesTo": ["variant"],
-  "visibleWhen": [],
-  "filterable": true,
-  "comparable": true,
-  "searchable": true,
-  "sortOrder": 10,
-  "createdAt": "2026-05-14T10:00:00Z",
-  "updatedAt": "2026-05-14T10:00:00Z"
-}
-```
-
-Binding rules:
-
-- A category can bind an attribute only once.
-- `requiredOn` and `appliesTo` values are `variant` and/or `unit`.
-- `visibleWhen.attributeKey` references another attribute key in the same schema.
-- `visibleWhen.allowedValueKeys` references enum `valueKey` values.
-
-Create allowed value:
-
-```http
-POST /internal/equipment-attributes/{attributeId}/allowed-values
-```
-
-```json
-{
-  "valueKey": "size_42",
-  "valueString": "42",
-  "valueDecimal": null,
-  "valueInt": null,
-  "valueBool": null,
-  "sortOrder": 10,
-  "status": "active",
-  "labels": {
-    "ru-RU": "42",
-    "en-US": "42"
-  }
-}
-```
-
-Patch allowed value:
-
-```http
-PATCH /internal/equipment-attributes/{attributeId}/allowed-values/{allowedValueId}
-```
-
-```json
-{
-  "sortOrder": 20,
-  "status": "active",
-  "labels": {
-    "ru-RU": "EU 42"
-  }
-}
-```
-
-Allowed value response:
-
-```json
-{
-  "allowedValueId": "00000000-0000-0000-0000-000000000901",
-  "attributeId": "00000000-0000-0000-0000-000000000701",
-  "valueKey": "size_42",
-  "valueString": "42",
-  "valueDecimal": null,
-  "valueInt": null,
-  "valueBool": null,
-  "sortOrder": 10,
-  "status": "active",
-  "labels": {
-    "ru-RU": "42",
-    "en-US": "42"
-  },
-  "createdAt": "2026-05-14T10:00:00Z",
-  "updatedAt": "2026-05-14T10:00:00Z"
-}
-```
-
-Allowed value rules:
-
-- `valueKey` must use lowercase letters, numbers, and underscores.
-- `valueKey` is unique per attribute.
-- Use `status: "archived"` instead of deleting values that may already be referenced.
-
-### Brand Review Queue
-
-Providers can request missing brands from their inventory flow. The API creates these brands as `pending_review` so providers can continue setup immediately. Admin review canonicalizes the directory for future aggregation, filtering, and search.
-
-Load frontend options before rendering the review UI:
-
-```http
-GET /internal/equipment-brands/options
-```
-
-Response:
-
-```json
-{
-  "statuses": [
-    { "value": "pending_review", "label": "Pending review" },
-    { "value": "approved", "label": "Approved" },
-    { "value": "merged", "label": "Merged" },
-    { "value": "rejected", "label": "Rejected" },
-    { "value": "archived", "label": "Archived" }
-  ],
-  "actions": [
-    {
-      "value": "approve",
-      "label": "Approve",
-      "requiresReasonCode": false,
-      "requiresTargetBrandId": false,
-      "allowedSourceStatuses": ["pending_review"]
-    },
-    {
-      "value": "merge",
-      "label": "Merge",
-      "requiresReasonCode": true,
-      "requiresTargetBrandId": true,
-      "allowedSourceStatuses": ["pending_review", "approved"]
-    }
-  ],
-  "reasonCodes": [
-    {
-      "value": "duplicate_brand",
-      "label": "Duplicate brand",
-      "appliesToActions": ["merge"]
-    }
-  ],
-  "fields": [
-    {
-      "key": "canonicalName",
-      "label": "Canonical name",
-      "filterable": false,
-      "searchable": true,
-      "sortable": true
-    }
-  ],
-  "pagination": {
-    "defaultPage": 1,
-    "defaultPageSize": 20,
-    "maxPageSize": 100
-  }
-}
-```
-
-List brands:
-
-```http
-GET /internal/equipment-brands?status=pending_review&query=North&page=1&pageSize=20
-```
-
-Query params:
-
-- `status`: optional exact status filter.
-- `query`: optional search over canonical and normalized brand names.
-- `page`: defaults to `1`.
-- `pageSize`: defaults to `20`, max `100`.
-
-Statuses:
-
-- `approved`: canonical brand available normally.
-- `pending_review`: provider-created brand waiting for admin decision.
-- `merged`: duplicate brand merged into another brand.
-- `rejected`: invalid brand request.
-- `archived`: retired brand record.
-
-Response:
-
-```json
-{
-  "items": [
-    {
-      "brandId": "00000000-0000-0000-0000-000000000301",
-      "canonicalName": "NorthPeak",
-      "normalizedName": "NORTHPEAK",
-      "status": "pending_review",
-      "website": null,
-      "countryCode": "RU",
-      "createdByProviderId": "00000000-0000-0000-0000-000000000401",
-      "mergedIntoBrandId": null,
-      "reviewedByUserId": null,
-      "reviewReasonCode": null,
-      "reviewComments": null,
-      "reviewedAt": null,
-      "createdAt": "2026-05-14T09:00:00Z",
-      "updatedAt": "2026-05-14T09:00:00Z",
-      "aliases": [
-        {
-          "aliasId": "00000000-0000-0000-0000-000000000302",
-          "alias": "NorthPeak",
-          "normalizedAlias": "NORTHPEAK",
-          "locale": null,
-          "source": "provider",
-          "status": "pending_review",
-          "createdAt": "2026-05-14T09:00:00Z",
-          "updatedAt": "2026-05-14T09:00:00Z"
-        }
-      ]
-    }
-  ],
-  "summary": {
-    "total": 4,
-    "byStatus": {
-      "pending_review": 2,
-      "approved": 1,
-      "merged": 1
-    }
-  },
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "totalItems": 1,
-    "totalPages": 1,
-    "hasPreviousPage": false,
-    "hasNextPage": false
-  }
-}
-```
-
-Get brand detail:
-
-```http
-GET /internal/equipment-brands/{brandId}
-```
-
-Use detail when opening a review drawer/page. The response is the same brand object from the list item.
-
-Patch brand metadata before review:
-
-```http
-PATCH /internal/equipment-brands/{brandId}
-```
-
-Request:
-
-```json
-{
-  "canonicalName": "NorthPeak",
-  "website": "https://example.com",
-  "countryCode": "RU",
-  "comments": "Normalized provider-entered name before approval."
-}
-```
-
-Response:
-
-```json
-{
-  "brand": {
-    "brandId": "00000000-0000-0000-0000-000000000301",
-    "canonicalName": "NorthPeak",
-    "normalizedName": "NORTHPEAK",
-    "status": "pending_review",
-    "website": "https://example.com",
-    "countryCode": "RU",
-    "createdByProviderId": "00000000-0000-0000-0000-000000000401",
-    "mergedIntoBrandId": null,
-    "reviewedByUserId": "00000000-0000-0000-0000-000000000501",
-    "reviewReasonCode": null,
-    "reviewComments": "Normalized provider-entered name before approval.",
-    "reviewedAt": "2026-05-14T09:04:00Z",
-    "createdAt": "2026-05-14T09:00:00Z",
-    "updatedAt": "2026-05-14T09:04:00Z",
-    "aliases": []
-  }
-}
-```
-
-Patch rules:
-
-- `canonicalName` is normalized by the API and checked against existing brands and aliases.
-- Empty `website` or `countryCode` clears the value.
-- `countryCode` is uppercased.
-- When `canonicalName` changes, the API adds an approved admin alias for the new canonical value.
-- Use patch before `approve` when the provider-created name is valid but needs cleanup.
-
-Get merge candidates:
-
-```http
-GET /internal/equipment-brands/{brandId}/merge-candidates?limit=10
-```
-
-Optional query:
-
-```http
-GET /internal/equipment-brands/{brandId}/merge-candidates?query=trek&limit=10
-```
-
-Response:
-
-```json
-{
-  "items": [
-    {
-      "brandId": "00000000-0000-0000-0000-000000000201",
-      "canonicalName": "Trek",
-      "normalizedName": "TREK",
-      "status": "approved",
-      "confidence": 0.75,
-      "matchKind": "brand_contains",
-      "aliases": ["Trek Bicycle"]
-    }
-  ]
-}
-```
-
-Use candidates to render a safer merge picker. The admin can still search manually by passing `query`.
-
-### Brand Actions
-
-Approve:
-
-```http
-POST /internal/equipment-brands/{brandId}/actions
-```
-
-```json
-{
-  "action": "approve",
-  "reasonCode": null,
-  "comments": "Looks valid."
-}
-```
-
-Reject:
-
-```json
-{
-  "action": "reject",
-  "reasonCode": "not_a_brand",
-  "comments": "This is a shop name, not manufacturer brand."
-}
-```
-
-`reject` requires `reasonCode`.
-
-Archive:
-
-```json
-{
-  "action": "archive",
-  "reasonCode": "obsolete",
-  "comments": null
-}
-```
-
-Merge duplicate:
-
-```json
-{
-  "action": "merge",
-  "targetBrandId": "00000000-0000-0000-0000-000000000201",
-  "reasonCode": "duplicate_brand",
-  "comments": "Duplicate of Trek."
-}
-```
-
-Merge rules:
-
-- `targetBrandId` is required.
-- A brand cannot be merged into itself.
-- The source brand becomes `merged`.
-- Source aliases move to the target brand and become approved admin aliases.
-- Use the brand list `query` filter to find possible merge targets.
-
-Action response:
-
-```json
-{
-  "status": "approved",
-  "action": "approve",
-  "brand": {
-    "brandId": "00000000-0000-0000-0000-000000000301",
-    "canonicalName": "NorthPeak",
-    "normalizedName": "NORTHPEAK",
-    "status": "approved",
-    "website": null,
-    "countryCode": "RU",
-    "createdByProviderId": "00000000-0000-0000-0000-000000000401",
-    "mergedIntoBrandId": null,
-    "reviewedByUserId": "00000000-0000-0000-0000-000000000501",
-    "reviewReasonCode": null,
-    "reviewComments": "Looks valid.",
-    "reviewedAt": "2026-05-14T09:05:00Z",
-    "createdAt": "2026-05-14T09:00:00Z",
-    "updatedAt": "2026-05-14T09:05:00Z",
-    "aliases": []
-  }
-}
-```
-
-Admin UX guidance:
-
-- Default the queue to `status=pending_review`.
-- Load `/internal/equipment-brands/options` once and drive tabs, action buttons, reason dropdowns, and pagination limits from it.
-- Use `summary.byStatus` for tab badges.
-- Show `canonicalName`, `normalizedName`, `countryCode`, `website`, provider id, and aliases.
-- Allow inline cleanup through `PATCH /internal/equipment-brands/{brandId}` before approval.
-- Make merge a deliberate action with target search and confirmation.
-- Do not build schema editing UI yet. The admin API currently exposes read-only categories/attributes plus brand review actions.
-- Equipment tables live in the `equipment` PostgreSQL schema for easier operational inspection.
-
-## Shared Address Suggestions
-
-Use the global address helper for any admin forms that need RU address autocomplete:
-
-```http
-GET /api/v1/addresses/ru/suggestions?query=Екатеринбург%20Ленина&count=10
-```
-
-This endpoint is suggestion-only. Store the selected or manually typed address through the owning feature's API contract.
+Supported actions:
+
+- `hold`; requires `reasonCode`
+- `clear_hold` or `clear-hold`; requires `reasonCode`
+
+Missing management pieces:
+
+- audit timeline for hold changes and readiness decisions
+- acquiring/routing action panels for connection, routability, recipient-route, and deal-binding operations
+- resource, offer, media, booking, and payment drilldowns where relevant
+
+## 5. User Management
+
+Use:
+
+- `GET /internal/users?filter=<rsql>&sort=<fields>&page=1&pageSize=20`
+- `GET /internal/users/options`
+- `GET /internal/users/{userId}`
+- `GET /internal/users/{userId}/roles`
+- `GET /internal/users/{userId}/external-auth-providers`
+- `GET /internal/providers/{providerId}/memberships`
+
+Required:
+
+- users table
+- server-side filter, sort, and pagination
+- backend-provided filter fields, sort fields, default sort, and pagination limits
+- user detail
+- roles
+- external auth providers
+- provider memberships
+- basic name, email, phone, and verification summary
+
+Current limitation:
+
+- user management is read-only; no safe role, membership, account state, verification, external-auth, or session mutation command exists yet.
+
+Needed before this becomes a full management console:
+
+- add/remove roles with confirmation, reason, actor, and audit trail
+- add/remove/update provider memberships
+- disable, block, unlock, force password reset, and revoke sessions
+- resend email or phone verification and recheck verification state when supported by the backend
+- unlink external auth provider, revoke external token, and show external provider health
+- login history, role-change history, membership-change history, and admin-action audit views
+- fuller profile fields beyond the current summary
+
+Do not add role mutation UI unless a dedicated safe admin command exists.
+
+Do not simulate account, role, membership, verification, external-auth, or session mutations in UI state.
+
+## 6. Bookings And Reservations
+
+Use:
+
+- internal booking/payment/reservation endpoints
+- public/provider booking endpoints only for cross-checking visible state
+
+Required:
+
+- booking lookup
+- reservation state
+- booking workflow state
+- payment correlation
+- provider/customer visible status comparison
+
+Rule:
+
+- reservation uncertainty must route to reconciliation, not optimistic manual edits
+
+## 7. Payments And Refund Cases
+
+Use:
+
+- `GET /internal/payments/{paymentId}`
+- `GET /internal/payments/{paymentId}/status`
+- `POST /internal/payments/{paymentId}/sync`
+- refund case read/action endpoints
+- cancel/refund endpoints where already implemented
+
+Required:
+
+- payment detail
+- external PSP references
+- callback/recovery state
+- sync action
+- refund case panel
+- guarded refund/cancel action forms
+
+Rule:
+
+- admin UI must show factual PSP state separately from business booking state
+
+## 8. Workflows And Reconciliation
+
+Use:
+
+- workflow detail endpoints
+- workflow action endpoints
+- reconciliation queue and incident endpoints
+
+Required:
+
+- recovery queue
+- workflow detail
+- compensation/recovery case panels
+- reconciliation incident detail
+- decision actions
+
+Rule:
+
+- uncertain external or write outcomes should be displayed as reconciliation-owned, not hidden behind generic errors
+
+## 9. Settlements And Ledger
+
+Use:
+
+- settlement plan read/execute endpoints
+- payout execution action endpoints in inspection mode unless explicitly enabled
+- ledger by booking/payment endpoints
+- ledger repair endpoint
+
+Required:
+
+- settlement plan detail
+- refund/payout/commission allocation summary
+- ledger facts table
+- repair diagnostics
+- repair action with strong confirmation
+
+Rule:
+
+- ledger completeness is mandatory
+- do not present bootstrap ledger projections as final accounting truth without a status label
+
+## 10. Capability Drift
+
+Use:
+
+- capability drift queue/history/impact endpoints
+- remediation action endpoint
+
+Required:
+
+- drift queue
+- provider impact detail
+- reason codes
+- remediation action
+- history
+
+## 11. Canonicalization
+
+Use:
+
+- canonical products/offers/mappings/proposals endpoints
+
+Required:
+
+- mapping lists
+- proposal detail
+- impact views
+- history
+
+Prototype note:
+
+- canonicalization is partial; mark incomplete actions clearly
+
+## Prototype Rules
+
+When API exists:
+
+- integrate the real endpoint
+- enforce admin role and `internal_api` scope
+- require confirmation for state-changing actions
+- show audit-relevant actor and timestamp fields
+
+When API is incomplete:
+
+- build a read-only or prototype panel only when it clarifies operator workflow
+- mark as `pending_api`, `read_only_for_now`, or `bootstrap_truth`
+- never fake financial, booking, or ledger truth
+
+## Suggested Delivery Order
+
+1. Auth shell, callback, role/scope guard.
+2. Backend-configured admin sign-in validation and dev seeded-admin instructions.
+3. Provider onboarding review.
+4. Provider governance and go-live readiness.
+5. User lookup and memberships.
+6. Reconciliation/workflow queues.
+7. Payments/refund inspection.
+8. Ledger/settlement inspection.
+9. Capability drift and canonicalization.
+
+## Definition Of Done For First Strong Prototype
+
+The admin console should let an internal user:
+
+- sign in as admin
+- pass role/scope validation
+- review provider onboarding
+- approve or request changes safely
+- inspect providers and go-live blockers
+- inspect users and provider memberships
+- inspect booking/payment/reconciliation state
+- understand which financial surfaces are bootstrap, pending, or live

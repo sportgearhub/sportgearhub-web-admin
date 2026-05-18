@@ -4,12 +4,18 @@ import { createProviderColumns } from './providerColumns'
 import { ProviderDetailModal } from './ProviderDetailModal'
 import { useProviderManagement } from './useProviderManagement'
 
+function buildPageSizeOptions(defaultPageSize: number, maxPageSize: number) {
+  return Array.from(new Set([10, 20, 50, 100, defaultPageSize].filter((pageSize) => pageSize <= maxPageSize))).sort((left, right) => left - right)
+}
+
 export function ProviderManagementPage() {
   const {
     providers,
     users,
     selectedProvider,
     memberships,
+    pagination,
+    listOptions,
     isLoading,
     isMembershipLoading,
     error,
@@ -25,7 +31,10 @@ export function ProviderManagementPage() {
     provider.settlementStatus,
     provider.governanceStatus,
   ]))).filter(Boolean).sort(), [providers])
-  const columns = useMemo(() => createProviderColumns(statusOptions), [statusOptions])
+  const columns = useMemo(() => createProviderColumns(listOptions, statusOptions), [listOptions, statusOptions])
+  const defaultPageSize = listOptions?.pagination.defaultPageSize ?? 20
+  const maxPageSize = listOptions?.pagination.maxPageSize ?? 100
+  const pageSizeOptions = useMemo(() => buildPageSizeOptions(defaultPageSize, maxPageSize), [defaultPageSize, maxPageSize])
 
   return (
     <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-background">
@@ -37,6 +46,11 @@ export function ProviderManagementPage() {
         emptyText="Поставщиков нет."
         loading={isLoading}
         onRefresh={() => void loadProviders()}
+        pageSizeOptions={pageSizeOptions}
+        initialPageSize={defaultPageSize}
+        initialSort={listOptions?.defaultSort}
+        pagination={pagination}
+        onQueryChange={(query) => void loadProviders(query)}
         onRowOpen={openProvider}
       />
       {selectedProvider ? (

@@ -98,6 +98,44 @@ export type ProviderOnboardingQueueQuery = {
   pageSize: number
 }
 
+export type InternalListQuery = {
+  filter?: string
+  sort?: string
+  page: number
+  pageSize: number
+}
+
+export type InternalListFilterFieldResponse = {
+  name: string
+  type: string
+  operators?: string[] | null
+  values?: string[] | null
+}
+
+export type InternalListSortFieldResponse = {
+  name: string
+  type: string
+}
+
+export type InternalListFilterExampleResponse = {
+  label: string
+  filter?: string | null
+  queryString?: string | null
+}
+
+export type InternalListOptionsResponse = {
+  filterFields: InternalListFilterFieldResponse[]
+  sortFields: InternalListSortFieldResponse[]
+  filterExamples: InternalListFilterExampleResponse[]
+  sortExamples: string[]
+  defaultSort: string
+  pagination: {
+    defaultPage: number
+    defaultPageSize: number
+    maxPageSize: number
+  }
+}
+
 export type ProviderOnboardingAction = 'approve' | 'request_changes' | 'reject'
 
 type ProviderOnboardingActionRequest = {
@@ -310,6 +348,13 @@ export type InternalUserDetailResponse = InternalUserSummaryResponse & {
   providerMemberships: InternalProviderMembershipResponse[]
 }
 
+export type InternalUsersListResponse = {
+  items: InternalUserSummaryResponse[]
+  pagination: PaginationResponse
+}
+
+export type InternalUserManagementOptionsResponse = InternalListOptionsResponse
+
 export type ProviderGovernanceDiagnosticsResponse = {
   hasProfileContact: boolean
   activeResources: number
@@ -334,8 +379,59 @@ export type ProviderGovernanceSummaryResponse = {
   updatedAt: string
 }
 
+export type ProviderGovernanceListResponse = {
+  items: ProviderGovernanceSummaryResponse[]
+  pagination: PaginationResponse
+}
+
+export type ProviderGovernanceOptionsResponse = InternalListOptionsResponse
+
 function buildApiUrl(path: string) {
   return `${API_BASE_URL}${path}`
+}
+
+function buildInternalListUrl(path: string, query?: InternalListQuery) {
+  if (!query) {
+    return path
+  }
+
+  const searchParams = new URLSearchParams()
+
+  if (query.filter) {
+    searchParams.set('filter', query.filter)
+  }
+
+  if (query.sort) {
+    searchParams.set('sort', query.sort)
+  }
+
+  searchParams.set('page', String(query.page))
+  searchParams.set('pageSize', String(query.pageSize))
+
+  return `${path}?${searchParams.toString()}`
+}
+
+function normalizeInternalListResponse<TItem>(response: TItem[] | { items: TItem[]; pagination: PaginationResponse }, query?: InternalListQuery) {
+  if (Array.isArray(response)) {
+    const page = query?.page ?? 1
+    const pageSize = query?.pageSize ?? response.length
+    const totalItems = response.length
+    const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(pageSize, 1)))
+
+    return {
+      items: response,
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasPreviousPage: page > 1,
+        hasNextPage: page < totalPages,
+      },
+    }
+  }
+
+  return response
 }
 
 async function parseError(response: Response) {
@@ -496,8 +592,14 @@ export function postEquipmentBrandAction(brandId: string, request: EquipmentBran
   })
 }
 
-export function getInternalUsers() {
-  return requestJson<InternalUserSummaryResponse[]>('/internal/users')
+export async function getInternalUsers(query?: InternalListQuery) {
+  const response = await requestJson<InternalUserSummaryResponse[] | InternalUsersListResponse>(buildInternalListUrl('/internal/users', query))
+
+  return normalizeInternalListResponse(response, query)
+}
+
+export function getInternalUserManagementOptions() {
+  return requestJson<InternalUserManagementOptionsResponse>('/internal/users/options')
 }
 
 export function getInternalUser(userId: string) {
@@ -512,8 +614,16 @@ export function getInternalUserExternalAuthProviders(userId: string) {
   return requestJson<InternalExternalAuthProviderResponse[]>(`/internal/users/${encodeURIComponent(userId)}/external-auth-providers`)
 }
 
-export function getProviderGovernanceQueue() {
-  return requestJson<ProviderGovernanceSummaryResponse[]>('/internal/providers/governance')
+export async function getProviderGovernanceQueue(query?: InternalListQuery) {
+  const response = await requestJson<ProviderGovernanceSummaryResponse[] | ProviderGovernanceListResponse>(
+    buildInternalListUrl('/internal/providers/governance', query),
+  )
+
+  return normalizeInternalListResponse(response, query)
+}
+
+export function getProviderGovernanceOptions() {
+  return requestJson<ProviderGovernanceOptionsResponse>('/internal/providers/governance/options')
 }
 
 export function getInternalProviderMemberships(providerId: string) {

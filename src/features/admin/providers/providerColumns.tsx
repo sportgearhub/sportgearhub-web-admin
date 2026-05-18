@@ -1,10 +1,14 @@
 import { Badge } from '../../../components/ui/badge'
-import type { ProviderGovernanceSummaryResponse } from '../adminApi'
+import type { InternalListOptionsResponse, ProviderGovernanceSummaryResponse } from '../adminApi'
 import { formatDateTime } from '../shared/format'
 import type { RsqlColumn } from '../shared/RsqlDataTable'
 import { getOperationalStatusVariant } from '../shared/status'
 
-export function createProviderColumns(statusOptions: string[]): Array<RsqlColumn<ProviderGovernanceSummaryResponse>> {
+function getFieldValues(options: InternalListOptionsResponse | null, field: string, fallback: string[]) {
+  return options?.filterFields.find((filterField) => filterField.name === field)?.values ?? fallback
+}
+
+export function createProviderColumns(options: InternalListOptionsResponse | null, fallbackStatusOptions: string[]): Array<RsqlColumn<ProviderGovernanceSummaryResponse>> {
   return [
     {
       key: 'provider',
@@ -25,7 +29,7 @@ export function createProviderColumns(statusOptions: string[]): Array<RsqlColumn
       field: 'overallStatus',
       width: '14%',
       filterKind: 'select',
-      options: statusOptions,
+      options: getFieldValues(options, 'overallStatus', fallbackStatusOptions),
       value: (provider) => provider.overallStatus,
       render: (provider) => <Badge variant={getOperationalStatusVariant(provider.overallStatus)}>{provider.overallStatus}</Badge>,
     },
@@ -35,7 +39,7 @@ export function createProviderColumns(statusOptions: string[]): Array<RsqlColumn
       field: 'capabilityStatus',
       width: '14%',
       filterKind: 'select',
-      options: statusOptions,
+      options: getFieldValues(options, 'capabilityStatus', fallbackStatusOptions),
       value: (provider) => provider.capabilityStatus,
       render: (provider) => <Badge variant={getOperationalStatusVariant(provider.capabilityStatus)}>{provider.capabilityStatus}</Badge>,
     },
@@ -45,7 +49,7 @@ export function createProviderColumns(statusOptions: string[]): Array<RsqlColumn
       field: 'settlementStatus',
       width: '14%',
       filterKind: 'select',
-      options: statusOptions,
+      options: getFieldValues(options, 'settlementStatus', fallbackStatusOptions),
       value: (provider) => provider.settlementStatus,
       render: (provider) => <Badge variant={getOperationalStatusVariant(provider.settlementStatus)}>{provider.settlementStatus}</Badge>,
     },
