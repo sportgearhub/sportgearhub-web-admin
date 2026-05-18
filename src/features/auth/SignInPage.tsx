@@ -43,7 +43,7 @@ export function SignInPage({ onSignIn, onForgotPassword }: SignInPageProps) {
         </div>
 
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Email</span>
+          <span className="text-sm font-medium">Почта</span>
           <Input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" autoFocus />
         </label>
 

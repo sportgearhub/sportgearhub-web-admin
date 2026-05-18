@@ -63,6 +63,31 @@ The generated OpenAPI document lists the OIDC token endpoints as `204` because O
 
 Backend persistence is organized by PostgreSQL bounded-context schemas: `auth`, `catalog`, `provider`, `inventory`, `booking`, `payments`, `operations`, and `equipment`. This is operational structure only and does not change admin route paths.
 
+## Provider Catalog And Media Notes
+
+Provider resource and offer authoring are owned by the provider console API surface, not the admin app.
+
+Current provider-web contracts live in:
+
+- `sportgearhub-web-provider/docs/integration.md`
+
+Admin screens should not call `/api/v1/provider/*` for provider-owned resource authoring unless a separate admin/operator workflow is explicitly added. Use `/internal/*` surfaces for admin review, diagnostics, moderation, and operator actions.
+
+If a future admin screen displays provider resource or offer cards, use the read-model media projection returned by the API:
+
+```json
+{
+  "mediaPreviewUrl": "/api/v1/media/provider-resource-images/5513d83986374f91b577f46793b61f9e"
+}
+```
+
+Rules:
+
+- treat `mediaPreviewUrl` as a display projection only
+- do not construct URLs from storage paths, provider ids, resource ids, or stored file names
+- uploaded provider resource images are served through `/api/v1/media/provider-resource-images/{imageId}`
+- do not edit provider resource images from admin UI until an explicit internal moderation/media workflow exists
+
 ## Sign In And Tokens
 
 Admin sign-in uses the OIDC password grant through the login alias:

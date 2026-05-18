@@ -8,7 +8,7 @@
   },
   "servers": [
     {
-      "url": "https://api.sportgearhub.ru"
+      "url": "http://localhost:5093"
     }
   ],
   "paths": {
@@ -426,6 +426,66 @@
         }
       }
     },
+    "/api/v1/auth/registration-invitations/{token}": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsAuthLocalGetRegistrationInvitationEndpoint1",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalRegistrationInvitationContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/registration-invitations/{token}": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsAuthLocalGetRegistrationInvitationEndpoint2",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalRegistrationInvitationContextResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/session-login": {
       "post": {
         "tags": [
@@ -472,6 +532,72 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalLoginRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalAuthUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/magic-sign-in": {
+      "post": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsAuthLocalMagicSignInEndpoint1",
+        "requestBody": {
+          "x-name": "MagicSignInRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsAuthLocalMagicSignInRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalAuthUserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/magic-sign-in": {
+      "post": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsAuthLocalMagicSignInEndpoint2",
+        "requestBody": {
+          "x-name": "MagicSignInRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsAuthLocalMagicSignInRequest"
               }
             }
           },
@@ -670,6 +796,72 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalResetPasswordRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalLocalAuthCommandResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/email/start": {
+      "post": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsAuthLocalStartEmailAuthEndpoint1",
+        "requestBody": {
+          "x-name": "StartEmailAuthRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalStartEmailAuthRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalLocalAuthCommandResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/email/start": {
+      "post": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsAuthLocalStartEmailAuthEndpoint2",
+        "requestBody": {
+          "x-name": "StartEmailAuthRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsAuthLocalStartEmailAuthRequest"
               }
             }
           },
@@ -3473,6 +3665,919 @@
         ]
       }
     },
+    "/internal/equipment-brands/{brandId}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentBrandByIdEndpoint",
+        "parameters": [
+          {
+            "name": "brandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentBrandEndpoint",
+        "parameters": [
+          {
+            "name": "brandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PatchInternalEquipmentBrandRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentBrandRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminUpdateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-brands/{brandId}/merge-candidates": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentBrandMergeCandidatesEndpoint",
+        "parameters": [
+          {
+            "name": "brandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandMergeCandidatesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-brands/options": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentBrandOptionsEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminOptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-brands": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentBrandsEndpoint",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-categories": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentCategoriesEndpoint",
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentCategoryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentCategoryEndpoint",
+        "requestBody": {
+          "x-name": "EquipmentCategoryAdminCreateRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminCreateRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-categories/{categorySlug}/attributes": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentCategoryAttributesEndpoint",
+        "parameters": [
+          {
+            "name": "categorySlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeSchemaResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-schema/options": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentSchemaOptionsEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaAdminOptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-attributes/{attributeId}/allowed-values": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentAllowedValueEndpoint",
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PostInternalEquipmentAllowedValueRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentAllowedValueRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-attributes/{attributeId}/allowed-values/{allowedValueId}": {
+      "patch": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentAllowedValueEndpoint",
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          },
+          {
+            "name": "allowedValueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PatchInternalEquipmentAllowedValueRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentAllowedValueRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-attributes": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentAttributesEndpoint",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentAttributeEndpoint",
+        "requestBody": {
+          "x-name": "EquipmentAttributeAdminCreateRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminCreateRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-attributes/{attributeId}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentAttributeByIdEndpoint",
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentAttributeEndpoint",
+        "parameters": [
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PatchInternalEquipmentAttributeRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentAttributeRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-categories/{categoryId}": {
+      "patch": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentCategoryEndpoint",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PatchInternalEquipmentCategoryRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentCategoryRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-categories/{categoryId}/attributes": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentCategoryAttributeBindingEndpoint",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PostInternalEquipmentCategoryAttributeBindingRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentCategoryAttributeBindingRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-categories/{categoryId}/attributes/{attributeId}": {
+      "patch": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentCategoryAttributeBindingEndpoint",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          },
+          {
+            "name": "attributeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PatchInternalEquipmentCategoryAttributeBindingRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentCategoryAttributeBindingRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/equipment-brands/{brandId}/actions": {
+      "post": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentBrandActionEndpoint",
+        "parameters": [
+          {
+            "name": "brandId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "requestBody": {
+          "x-name": "PostInternalEquipmentBrandActionRequest",
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentBrandActionRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminActionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
     "/internal/bookings/{bookingId}/deductions": {
       "get": {
         "tags": [
@@ -4246,6 +5351,19 @@
           }
         }
       },
+      "EbashITSportgearhubApiModelsAuthLocalRegistrationInvitationContextResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "EbashITSportgearhubApiModelsAuthLocalAuthUserResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -4281,10 +5399,23 @@
           }
         }
       },
+      "EbashITSportgearhubApiEndpointsAuthLocalMagicSignInRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
       "EbashITSportgearhubApiModelsAuthLocalRegisterRequest": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
           "name": {
             "type": "string"
           },
@@ -4292,10 +5423,12 @@
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "app": {
             "type": "string",
@@ -4325,6 +5458,19 @@
           },
           "newPassword": {
             "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsAuthLocalStartEmailAuthRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "app": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -6018,16 +7164,23 @@
       },
       "RsqlParserNetLinqRsqlPagedResultOfInternalProviderResourceRsqlExampleResponse": {
         "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
         "additionalProperties": false,
         "properties": {
           "items": {
             "type": "array",
+            "description": "The items in the current page.",
             "items": {
               "$ref": "#/components/schemas/EbashITSportgearhubApiEndpointsInternalProviderResourcesInternalProviderResourceRsqlExampleResponse"
             }
           },
           "pagination": {
-            "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
           }
         }
       },
@@ -6056,11 +7209,6 @@
             "type": "string",
             "nullable": true
           },
-          "baseCapacity": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -6073,29 +7221,36 @@
       },
       "RsqlParserNetLinqRsqlPagination": {
         "type": "object",
+        "description": "Describes the pagination state for a paged result.",
         "additionalProperties": false,
         "properties": {
           "page": {
             "type": "integer",
+            "description": "Gets the one-based current page number.",
             "format": "int32"
           },
           "pageSize": {
             "type": "integer",
+            "description": "Gets the requested page size.",
             "format": "int32"
           },
           "totalItems": {
             "type": "integer",
+            "description": "Gets the total number of matching items before paging.",
             "format": "int64"
           },
           "totalPages": {
             "type": "integer",
+            "description": "Gets the total number of pages.",
             "format": "int64"
           },
           "hasPreviousPage": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Gets a value indicating whether a previous page exists."
           },
           "hasNextPage": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Gets a value indicating whether a next page exists."
           }
         }
       },
@@ -6129,6 +7284,14 @@
             "oneOf": [
               {
                 "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderProfileProviderOnboardingDraftResponse"
+              }
+            ]
+          },
+          "review": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderProfileProviderOnboardingReviewResponse"
               }
             ]
           },
@@ -6217,6 +7380,25 @@
           },
           "description": {
             "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsProviderProfileProviderOnboardingReviewResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "reasonCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         }
@@ -6312,16 +7494,23 @@
       },
       "RsqlParserNetLinqRsqlPagedResultOfProviderOnboardingAdminSummaryResponse": {
         "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
         "additionalProperties": false,
         "properties": {
           "items": {
             "type": "array",
+            "description": "The items in the current page.",
             "items": {
               "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProviderProfileProviderOnboardingAdminSummaryResponse"
             }
           },
           "pagination": {
-            "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
           }
         }
       },
@@ -8126,6 +9315,1384 @@
             "type": "string"
           },
           "note": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "brandId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "canonicalName": {
+            "type": "string"
+          },
+          "normalizedName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdByProviderId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "mergedIntoBrandId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "reviewedByUserId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "reviewReasonCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewComments": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAliasAdminResponse"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAliasAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "aliasId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "normalizedAlias": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentBrandByIdRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandMergeCandidatesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandMergeCandidateResponse"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandMergeCandidateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "brandId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "canonicalName": {
+            "type": "string"
+          },
+          "normalizedName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "matchKind": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandMergeCandidatesRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandStatusOptionResponse"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandActionOptionResponse"
+            }
+          },
+          "reasonCodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandReasonCodeOptionResponse"
+            }
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandFieldOptionResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandPaginationOptionsResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandStatusOptionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandActionOptionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "requiresReasonCode": {
+            "type": "boolean"
+          },
+          "requiresTargetBrandId": {
+            "type": "boolean"
+          },
+          "allowedSourceStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandReasonCodeOptionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "appliesToActions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandFieldOptionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "filterable": {
+            "type": "boolean"
+          },
+          "searchable": {
+            "type": "boolean"
+          },
+          "sortable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandPaginationOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "defaultPage": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultPageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminResponse"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminSummaryResponse"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAdminPaginationResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminSummaryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "byStatus": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAdminPaginationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hasPreviousPage": {
+            "type": "boolean"
+          },
+          "hasNextPage": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminListRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentCategoryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "capacityMode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentCategoriesRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeSchemaResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentCategoryResponse"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeResponse"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributeId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "requiredOn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "appliesTo": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibleWhen": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeVisibilityConditionResponse"
+            }
+          },
+          "filterable": {
+            "type": "boolean"
+          },
+          "comparable": {
+            "type": "boolean"
+          },
+          "searchable": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allowedValues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeAllowedValueResponse"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeVisibilityConditionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributeKey": {
+            "type": "string"
+          },
+          "allowedValueKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsProviderResourcesEquipmentEquipmentAttributeAllowedValueResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "allowedValueId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "valueKey": {
+            "type": "string"
+          },
+          "valueString": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueDecimal": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "valueInt": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "valueBool": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "label": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentCategoryAttributesRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaAdminOptionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "categoryStatuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "attributeStatuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "valueTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "attributeScopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "referenceTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "resourceTypes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "capacityModes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          },
+          "allowedValueStatuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentSchemaOptionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "allowedValueId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "attributeId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "valueKey": {
+            "type": "string"
+          },
+          "valueString": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueDecimal": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "valueInt": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "valueBool": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentAllowedValueRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminCreateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "valueKey": {
+            "type": "string"
+          },
+          "valueString": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueDecimal": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "valueInt": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "valueBool": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "labels": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentAllowedValueRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminUpdateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAllowedValueAdminUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "valueKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueString": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueDecimal": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "valueInt": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "valueBool": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "labels": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminListResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAdminPaginationResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributeId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "key": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "translations": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeTranslationResponse"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeTranslationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "helpText": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminListRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentGetInternalEquipmentAttributeByIdRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "translations": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeTranslationInput"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeTranslationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "helpText": {
+            "type": "string",
+            "nullable": true
+          },
+          "unitLabel": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentAttributeRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminUpdateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeAdminUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "valueType": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "referenceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "translations": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeTranslationInput"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "categoryId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string"
+          },
+          "capacityMode": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "translations": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryTranslationResponse"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryTranslationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "resourceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "capacityMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "translations": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryTranslationInput"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryTranslationInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentCategoryRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminUpdateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAdminUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "slug": {
+            "type": "string",
+            "nullable": true
+          },
+          "resourceType": {
+            "type": "string",
+            "nullable": true
+          },
+          "capacityMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "translations": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryTranslationInput"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "bindingId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "attributeId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "requiredOn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "appliesTo": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibleWhen": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeVisibilityConditionAdminResponse"
+            }
+          },
+          "filterable": {
+            "type": "boolean"
+          },
+          "comparable": {
+            "type": "boolean"
+          },
+          "searchable": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeVisibilityConditionAdminResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributeKey": {
+            "type": "string"
+          },
+          "allowedValueKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentCategoryAttributeBindingRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminCreateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributeId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "requiredOn": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "appliesTo": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibleWhen": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeVisibilityConditionAdminInput"
+            }
+          },
+          "filterable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "comparable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "searchable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeVisibilityConditionAdminInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "attributeKey": {
+            "type": "string"
+          },
+          "allowedValueKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentCategoryAttributeBindingRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminUpdateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentCategoryAttributeBindingAdminUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "requiredOn": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "appliesTo": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "visibleWhen": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentAttributeVisibilityConditionAdminInput"
+            }
+          },
+          "filterable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "comparable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "searchable": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminUpdateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPatchInternalEquipmentBrandRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminUpdateRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "canonicalName": {
+            "type": "string",
+            "nullable": true
+          },
+          "website": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "comments": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminActionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "brand": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminResponse"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalEquipmentPostInternalEquipmentBrandActionRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminActionRequest"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false
+          }
+        ]
+      },
+      "EbashITSportgearhubApiModelsInternalEquipmentEquipmentBrandAdminActionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "targetBrandId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "reasonCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "comments": {
             "type": "string",
             "nullable": true
           }

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader } from './components/ui/card'
 import { ConsentModal } from './components/ConsentModal'
 import { MetricsGrid } from './components/MetricsGrid'
-import { OperationalQueues } from './components/OperationalQueues'
-import { navItems, sectionActions } from './data/adminConfig'
+import { navGroups, navItems, sectionActions } from './data/adminConfig'
 import { DomainPanel } from './features/admin/DomainPanel'
 import { EquipmentTaxonomyReview } from './features/admin/EquipmentTaxonomyReview'
 import { OnboardingReview } from './features/admin/OnboardingReview'
+import { ProviderManagementPage } from './features/admin/providers/ProviderManagementPage'
+import { UserManagementPage } from './features/admin/users/UserManagementPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignInPage } from './features/auth/SignInPage'
@@ -14,7 +15,7 @@ import { VerifyEmailPage } from './features/auth/VerifyEmailPage'
 import { restoreCurrentSession, signInWithPassword, signOutCurrentUser } from './features/auth/authApi'
 import { clearStoredAuthTokens } from './features/auth/authTokenStore'
 import { ConsoleShell } from './layout/ConsoleShell'
-import type { AdminSectionId, AdminSession, ConsoleAction, OnboardingViewMode, QueueItem } from './types/admin'
+import type { AdminSectionId, AdminSession, ConsoleAction, OnboardingViewMode } from './types/admin'
 
 const CONSOLE_PATH = '/console'
 const FORGOT_PASSWORD_PATH = '/auth/forgot-password'
@@ -24,7 +25,6 @@ const VERIFY_EMAIL_PATH = '/auth/verify-email'
 const LOCATION_CHANGE_EVENT = 'sportgearhub-location-change'
 const SIGN_IN_PATHS = new Set([SIGN_IN_PATH, '/login', '/auth/sign-in', '/auth/login'])
 const SIGN_OUT_BUTTON_LABELS = new Set(['Вернуться ко входу', 'Back to sign in'])
-const operationalQueues: QueueItem[] = []
 
 function getCurrentPath() {
   return window.location.pathname
@@ -54,6 +54,7 @@ function App() {
   const [activeSession, setActiveSession] = useState<AdminSession | null>(null)
   const [activeSection, setActiveSection] = useState<AdminSectionId>('overview')
   const [onboardingViewMode, setOnboardingViewMode] = useState<OnboardingViewMode>('table')
+  const [topBarContent, setTopBarContent] = useState<React.ReactNode | null>(null)
   const [pendingAction, setPendingAction] = useState<ConsoleAction | null>(null)
   const [currentPath, setCurrentPath] = useState(getCurrentPath)
   const [currentSearch, setCurrentSearch] = useState(getCurrentSearch)
@@ -258,9 +259,10 @@ function App() {
     <ConsoleShell
       activeSection={activeSection}
       currentSection={currentSection}
-      navItems={navItems}
+      navGroups={navGroups}
       operator={activeSession}
       onboardingViewMode={onboardingViewMode}
+      topBarContent={topBarContent}
       onSectionChange={setActiveSection}
       onOnboardingViewModeChange={setOnboardingViewMode}
       onSignOut={signOut}
@@ -269,14 +271,19 @@ function App() {
         <>
           <MetricsGrid />
 
-          <section className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-            <OperationalQueues items={operationalQueues} />
+          <section className="rounded-lg border bg-card p-5">
+            <h2 className="text-sm font-semibold">Операционная консоль</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Выберите раздел в навигации для работы с реальными API-очередями.</p>
           </section>
         </>
       ) : (
         <>
           {activeSection === 'onboarding' ? (
-            <OnboardingReview viewMode={onboardingViewMode} />
+            <OnboardingReview viewMode={onboardingViewMode} onTopBarContentChange={setTopBarContent} />
+          ) : activeSection === 'governance' ? (
+            <ProviderManagementPage />
+          ) : activeSection === 'users' ? (
+            <UserManagementPage />
           ) : activeSection === 'canonicalization' ? (
             <EquipmentTaxonomyReview />
           ) : (

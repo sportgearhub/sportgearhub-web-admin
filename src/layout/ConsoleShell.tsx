@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { BarChart3, ChevronLeft, ChevronRight, LayoutGrid, LogOut } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronLeft, ChevronRight, LayoutGrid, LogOut } from 'lucide-react'
 import { Button } from '../components/ui/button'
-import type { AdminSectionId, AdminSession, NavItem, OnboardingViewMode } from '../types/admin'
+import type { AdminSectionId, AdminSession, NavGroup, NavItem, OnboardingViewMode } from '../types/admin'
 
 type ConsoleShellProps = {
   children: React.ReactNode
   activeSection: AdminSectionId
   currentSection: NavItem
-  navItems: NavItem[]
+  navGroups: NavGroup[]
   operator: AdminSession
   onboardingViewMode: OnboardingViewMode
+  topBarContent?: React.ReactNode
   onSectionChange: (section: AdminSectionId) => void
   onOnboardingViewModeChange: (mode: OnboardingViewMode) => void
   onSignOut: () => void
@@ -19,15 +20,24 @@ export function ConsoleShell({
   children,
   activeSection,
   currentSection,
-  navItems,
+  navGroups,
   operator,
   onboardingViewMode,
+  topBarContent,
   onSectionChange,
   onOnboardingViewModeChange,
   onSignOut,
 }: ConsoleShellProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const isTableFirstSection = activeSection === 'onboarding'
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
+  const isTableFirstSection = activeSection === 'onboarding' || activeSection === 'governance' || activeSection === 'users'
+
+  function toggleGroup(groupId: string) {
+    setExpandedGroups((current) => ({
+      ...current,
+      [groupId]: !current[groupId],
+    }))
+  }
 
   return (
     <div className="flex min-h-screen bg-muted/35">
@@ -56,23 +66,43 @@ export function ConsoleShell({
           </Button>
         </div>
 
-        <nav className="grid gap-1 px-2" aria-label="Навигация администратора">
-            {navItems.map((item) => (
-              <Button
-                type="button"
-                key={item.id}
-                variant={item.id === activeSection ? 'secondary' : 'ghost'}
-                size={isSidebarCollapsed ? 'icon' : 'sm'}
-                className={isSidebarCollapsed ? 'w-full' : 'w-full justify-start'}
-                onClick={() => onSectionChange(item.id)}
-                title={item.label}
-              >
-                <span className="grid size-5 shrink-0 place-items-center rounded bg-primary/10 text-[10px] font-bold text-primary" aria-hidden="true">
-                  {item.label.slice(0, 1)}
-                </span>
-                {isSidebarCollapsed ? null : <span className="truncate">{item.label}</span>}
-              </Button>
-            ))}
+        <nav className="grid gap-1 overflow-y-auto px-2 pb-3" aria-label="Навигация администратора">
+          {navGroups.map((group) => {
+            const isActiveGroup = group.items.some((item) => item.id === activeSection)
+            const isGroupExpanded = Boolean(expandedGroups[group.id]) || isActiveGroup
+
+            return (
+              <section key={group.id} className="grid gap-1">
+                <button
+                  type="button"
+                  className={isSidebarCollapsed ? 'grid h-8 w-full place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground' : 'flex h-8 w-full items-center justify-between rounded-md px-2 text-xs font-medium uppercase tracking-normal text-muted-foreground hover:bg-muted hover:text-foreground'}
+                  onClick={() => toggleGroup(group.id)}
+                  title={group.label}
+                  aria-expanded={isGroupExpanded}
+                >
+                  <span className={isSidebarCollapsed ? 'text-[10px] font-bold' : 'truncate'}>{isSidebarCollapsed ? group.label.slice(0, 1) : group.label}</span>
+                  {isSidebarCollapsed ? null : <ChevronDown size={14} className={isGroupExpanded ? 'transition-transform' : '-rotate-90 transition-transform'} aria-hidden="true" />}
+                </button>
+
+                {isGroupExpanded ? group.items.map((item) => (
+                  <Button
+                    type="button"
+                    key={item.id}
+                    variant={item.id === activeSection ? 'secondary' : 'ghost'}
+                    size={isSidebarCollapsed ? 'icon' : 'sm'}
+                    className={isSidebarCollapsed ? 'w-full' : 'w-full justify-start pl-3'}
+                    onClick={() => onSectionChange(item.id)}
+                    title={item.label}
+                  >
+                    <span className="grid size-5 shrink-0 place-items-center rounded bg-primary/10 text-[10px] font-bold text-primary" aria-hidden="true">
+                      {item.label.slice(0, 1)}
+                    </span>
+                    {isSidebarCollapsed ? null : <span className="truncate">{item.label}</span>}
+                  </Button>
+                )) : null}
+              </section>
+            )
+          })}
         </nav>
 
         <div className="mt-auto border-t p-3">
@@ -89,6 +119,7 @@ export function ConsoleShell({
             <h1 className="truncate text-sm font-semibold">{currentSection.label}</h1>
           </div>
           <div className="flex min-w-0 items-center gap-3">
+            {topBarContent}
             {activeSection === 'onboarding' ? (
               <div className="grid grid-cols-2 rounded-md border bg-muted p-1" aria-label="Режим онбординга">
                 <Button

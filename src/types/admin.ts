@@ -23,16 +23,13 @@ export type NavItem = {
   label: string
 }
 
-export type OnboardingViewMode = 'table' | 'analytics'
-
-export type QueueItem = {
+export type NavGroup = {
   id: string
-  title: string
-  owner: string
-  severity: Severity
-  status: string
-  updatedAt: string
+  label: string
+  items: NavItem[]
 }
+
+export type OnboardingViewMode = 'table' | 'analytics'
 
 export type ConsoleAction = {
   label: string

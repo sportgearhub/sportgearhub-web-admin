@@ -10,6 +10,7 @@ import {
   CircleCheck,
   CircleX,
   Filter,
+  Loader2,
   RefreshCw,
   RotateCcw,
   Search,
@@ -54,6 +55,7 @@ const DEFAULT_PAGINATION: PaginationResponse = {
 
 type SortDirection = 'asc' | 'desc' | ''
 type OnboardingColumnKey = 'displayName' | 'legalName' | 'taxNumber' | 'status' | 'submittedAt'
+type FlyoutPosition = { top: number; left: number }
 type ColumnConfig = {
   key: OnboardingColumnKey
   label: string
@@ -150,18 +152,6 @@ function buildSortExpression(columnState: ColumnState) {
   }).join(',')
 }
 
-function getSortLabel(direction: SortDirection) {
-  if (direction === 'asc') {
-    return 'по возрастанию'
-  }
-
-  if (direction === 'desc') {
-    return 'по убыванию'
-  }
-
-  return 'без сортировки'
-}
-
 function getSortIcon(direction: SortDirection) {
   if (direction === 'asc') {
     return <ArrowUp size={ICON_SIZE} aria-hidden="true" />
@@ -172,6 +162,30 @@ function getSortIcon(direction: SortDirection) {
   }
 
   return <ArrowUpDown size={ICON_SIZE} aria-hidden="true" />
+}
+
+function getNextSortDirection(direction: SortDirection): SortDirection {
+  if (direction === '') {
+    return 'asc'
+  }
+
+  if (direction === 'asc') {
+    return 'desc'
+  }
+
+  return ''
+}
+
+function getSortToggleLabel(direction: SortDirection) {
+  if (direction === 'asc') {
+    return 'По возрастанию'
+  }
+
+  if (direction === 'desc') {
+    return 'По убыванию'
+  }
+
+  return 'Без сортировки'
 }
 
 function getStatusBadgeVariant(status: string): BadgeProps['variant'] {
@@ -225,7 +239,7 @@ function mapSummaryResponse(response: ProviderOnboardingSummaryResponse): Onboar
     id: response.applicationId,
     providerId: response.providerId ?? undefined,
     isApiBacked: true,
-    providerName: response.displayName ?? 'Заявка провайдера',
+    providerName: response.displayName ?? 'Заявка поставщика',
     applicantName: 'Не указано',
     applicantEmail: response.contactEmail ?? 'Не указан',
     submittedAt: formatDate(response.submittedAt ?? response.updatedAt),
@@ -236,14 +250,14 @@ function mapSummaryResponse(response: ProviderOnboardingSummaryResponse): Onboar
     legalForm: response.legalForm ?? undefined,
     taxId: response.taxNumber ?? 'Не указан',
     city: 'Не указан',
-    reviewNote: response.providerId ? 'Профиль провайдера уже создан.' : 'Профиль провайдера будет создан после одобрения.',
+    reviewNote: response.providerId ? 'Профиль поставщика уже создан.' : 'Профиль поставщика будет создан после одобрения.',
     checklist: [],
   }
 }
 
 function mapOnboardingResponse(response: ProviderOnboardingResponse, fallback?: OnboardingApplication): OnboardingApplication {
   const draft = response.draft
-  const displayName = draft?.displayName ?? fallback?.providerName ?? 'Заявка провайдера'
+  const displayName = draft?.displayName ?? fallback?.providerName ?? 'Заявка поставщика'
   const legalName = draft?.legalName ?? fallback?.legalName ?? 'Не указано'
   const city = draft?.cityId ? 'Указан в заявке' : fallback?.city ?? 'Не указан'
   const applicationId = response.applicationId ?? fallback?.id ?? ''
@@ -269,7 +283,7 @@ function mapOnboardingResponse(response: ProviderOnboardingResponse, fallback?: 
     city,
     address: draft?.address ?? fallback?.address,
     description: draft?.description ?? fallback?.description,
-    reviewNote: response.providerId ? 'Профиль провайдера уже создан.' : 'Профиль провайдера будет создан после одобрения.',
+    reviewNote: response.providerId ? 'Профиль поставщика уже создан.' : 'Профиль поставщика будет создан после одобрения.',
     checklist: [
       { label: 'Профиль заполнен', done: isReadyChecklistStatus(response.checklist?.profile) },
       { label: 'Юридические данные заполнены', done: isReadyChecklistStatus(response.checklist?.legal) },
@@ -293,14 +307,16 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 type OnboardingReviewProps = {
   viewMode: OnboardingViewMode
+  onTopBarContentChange?: (content: React.ReactNode | null) => void
 }
 
-export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
+export function OnboardingReview({ viewMode, onTopBarContentChange }: OnboardingReviewProps) {
   const [applications, setApplications] = useState<OnboardingApplication[]>([])
   const [selectedApplication, setSelectedApplication] = useState<OnboardingApplication | null>(null)
   const [columnState, setColumnState] = useState<ColumnState>(EMPTY_COLUMN_STATE)
   const [listOptions, setListOptions] = useState<ProviderOnboardingListOptionsResponse | null>(null)
   const [activeColumn, setActiveColumn] = useState<ColumnConfig | null>(null)
+  const [filterFlyoutPosition, setFilterFlyoutPosition] = useState<FlyoutPosition | null>(null)
   const [filterDraft, setFilterDraft] = useState('')
   const [sortDraft, setSortDraft] = useState<SortDirection>('')
   const [pagination, setPagination] = useState<PaginationResponse>(DEFAULT_PAGINATION)
@@ -318,6 +334,7 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
   const loadQueue = useCallback(
     async (page = 1) => {
       try {
+        setIsQueueLoading(true)
         const response = await getProviderOnboardingQueue({
           filter: activeFilter,
           sort: activeSort,
@@ -396,15 +413,25 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
     }
   }
 
-  function openColumnDialog(column: ColumnConfig) {
+  function openColumnFlyout(column: ColumnConfig, anchor: HTMLElement) {
     const state = columnState[column.key]
+    const rect = anchor.getBoundingClientRect()
 
     setActiveColumn(column)
+    setFilterFlyoutPosition({
+      top: rect.bottom + 8,
+      left: Math.max(16, Math.min(rect.left, window.innerWidth - 376)),
+    })
     setFilterDraft(state.filter)
     setSortDraft(state.sort)
   }
 
-  function applyColumnDialog() {
+  function closeColumnFlyout() {
+    setActiveColumn(null)
+    setFilterFlyoutPosition(null)
+  }
+
+  function applyColumnFlyout() {
     if (!activeColumn) {
       return
     }
@@ -416,22 +443,51 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
         sort: sortDraft,
       },
     }))
-    setActiveColumn(null)
+    closeColumnFlyout()
   }
 
-  function resetColumnDialog() {
+  function resetColumnFlyout() {
     setFilterDraft('')
     setSortDraft('')
-  }
-
-  function clearAllFilters() {
-    setColumnState(EMPTY_COLUMN_STATE)
   }
 
   function updateApplication(application: OnboardingApplication) {
     setApplications((currentApplications) => upsertApplication(currentApplications, application))
     setSelectedApplication(application)
   }
+
+  const activeFilterCount = Object.values(columnState).filter((state) => state.filter.trim()).length
+  const activeSortCount = Object.values(columnState).filter((state) => state.sort).length
+
+  useEffect(() => {
+    if (!onTopBarContentChange || viewMode !== 'table') {
+      onTopBarContentChange?.(null)
+      return undefined
+    }
+
+    onTopBarContentChange(
+      <div className="flex min-w-0 items-center gap-1">
+        <span className="hidden text-xs text-muted-foreground lg:inline">
+          {pagination.totalItems} заявок
+          {activeFilterCount ? ` · фильтры ${activeFilterCount}` : ''}
+          {activeSortCount ? ` · сортировка ${activeSortCount}` : ''}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => void loadQueue(pagination.page || 1)}
+          disabled={isQueueLoading}
+          aria-label="Обновить заявки"
+          title="Обновить заявки"
+        >
+          {isQueueLoading ? <Loader2 size={ICON_SIZE} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={ICON_SIZE} aria-hidden="true" />}
+        </Button>
+      </div>,
+    )
+
+    return () => onTopBarContentChange(null)
+  }, [activeFilterCount, activeSortCount, isQueueLoading, loadQueue, onTopBarContentChange, pagination.page, pagination.totalItems, viewMode])
 
   if (viewMode === 'analytics') {
     return (
@@ -449,37 +505,9 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
   return (
     <>
       <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 border-b px-2 py-2">
-          <span className="text-sm text-muted-foreground">
-            {pagination.totalItems} заявок
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => void loadQueue(pagination.page)}
-            disabled={isQueueLoading}
-            aria-label="Обновить"
-            title="Обновить"
-          >
-            <RefreshCw size={ICON_SIZE} aria-hidden="true" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" onClick={clearAllFilters} aria-label="Сбросить фильтры" title="Сбросить фильтры">
-            <RotateCcw size={ICON_SIZE} aria-hidden="true" />
-          </Button>
-          <label className="flex h-9 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground hover:bg-muted" title="Строк на странице">
-            <SlidersHorizontal size={ICON_SIZE} aria-hidden="true" />
-            <select className="bg-transparent text-sm outline-none" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-          </label>
-        </div>
-
         {lookupError ? <p className="border-b px-2 py-2 text-sm font-medium text-destructive">{lookupError}</p> : null}
 
-        <TableFrame className="min-h-0 flex-1 rounded-none border-0 bg-background">
+        <TableFrame className="relative min-h-0 flex-1 rounded-none border-0 bg-background">
           <Table className="min-w-0 table-fixed">
             <colgroup>
               <col className="w-[31%]" />
@@ -493,16 +521,18 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
                 {columns.map((column) => {
                   const state = columnState[column.key]
                   const hasFilter = Boolean(state.filter.trim())
+                  const isActive = hasFilter || Boolean(state.sort)
 
                   return (
-                    <TableHead key={column.key} className="px-2 py-2 align-top">
-                      <button type="button" className="flex w-full items-start justify-between gap-2 rounded-md px-1 py-1 text-left hover:bg-background" onClick={() => openColumnDialog(column)}>
-                        <span className="min-w-0 break-words">
-                          {column.label}
-                        </span>
-                        <span className={state.sort || hasFilter ? 'grid size-5 place-items-center rounded bg-accent text-primary' : 'grid size-5 place-items-center text-muted-foreground'} title={getSortLabel(state.sort)}>
-                          {hasFilter ? <Filter size={12} aria-label="Есть фильтр" /> : null}
-                          {getSortIcon(state.sort)}
+                    <TableHead key={column.key} className="px-3 py-2 align-top">
+                      <button
+                        type="button"
+                        className="flex w-full items-start justify-between gap-2 rounded-md px-1 py-1 text-left hover:bg-background"
+                        onClick={(event) => openColumnFlyout(column, event.currentTarget)}
+                      >
+                        <span className="min-w-0 break-words">{column.label}</span>
+                        <span className={isActive ? 'grid size-5 shrink-0 place-items-center rounded bg-accent text-primary' : 'grid size-5 shrink-0 place-items-center text-muted-foreground'}>
+                          {hasFilter ? <Filter size={12} aria-hidden="true" /> : getSortIcon(state.sort)}
                         </span>
                       </button>
                     </TableHead>
@@ -543,25 +573,47 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
               ) : (
                 <TableRow>
                   <TableCell colSpan={COLUMNS.length} className="py-8 text-center text-muted-foreground">
-                    {isQueueLoading ? 'Загружаем заявки...' : 'Заявок для проверки нет.'}
+                    {isQueueLoading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 size={ICON_SIZE} className="animate-spin" aria-hidden="true" />
+                        Загружаем заявки...
+                      </span>
+                    ) : 'Заявок для проверки нет.'}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          {isQueueLoading && applications.length ? (
+            <div className="absolute inset-0 grid place-items-center bg-background/55 backdrop-blur-[1px]">
+              <span className="inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
+                <Loader2 size={ICON_SIZE} className="animate-spin" aria-hidden="true" />
+                Обновляем заявки...
+              </span>
+            </div>
+          ) : null}
         </TableFrame>
-
-        <footer className="flex flex-wrap items-center justify-between gap-2 border-t px-2 py-2 text-sm text-muted-foreground">
-          <span>
-            Страница {pagination.page || 1} из {Math.max(pagination.totalPages, 1)} · всего {pagination.totalItems}
-          </span>
-          <div className="flex gap-2">
+        <footer className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-t px-3 py-2 text-sm text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="truncate">
+              Страница {pagination.page || 1} из {Math.max(pagination.totalPages, 1)} · всего {pagination.totalItems}
+            </span>
+            <label className="flex h-8 items-center gap-2 rounded-md border bg-card px-2 text-sm" title="Строк на странице">
+              <SlidersHorizontal size={ICON_SIZE} aria-hidden="true" />
+              <select className="bg-transparent text-sm outline-none" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          </div>
+          <div className="flex items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={() => void loadQueue(pagination.page - 1)}
-              disabled={!pagination.hasPreviousPage}
+              disabled={isQueueLoading || !pagination.hasPreviousPage}
               aria-label="Предыдущая страница"
               title="Предыдущая страница"
             >
@@ -572,7 +624,7 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
               variant="ghost"
               size="icon"
               onClick={() => void loadQueue(pagination.page + 1)}
-              disabled={!pagination.hasNextPage}
+              disabled={isQueueLoading || !pagination.hasNextPage}
               aria-label="Следующая страница"
               title="Следующая страница"
             >
@@ -582,16 +634,17 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
         </footer>
       </section>
 
-      {activeColumn ? (
-        <ColumnFilterModal
+      {activeColumn && filterFlyoutPosition ? (
+        <ColumnFilterFlyout
           column={activeColumn}
+          position={filterFlyoutPosition}
           filter={filterDraft}
           sort={sortDraft}
           onFilterChange={setFilterDraft}
           onSortChange={setSortDraft}
-          onApply={applyColumnDialog}
-          onReset={resetColumnDialog}
-          onClose={() => setActiveColumn(null)}
+          onApply={applyColumnFlyout}
+          onReset={resetColumnFlyout}
+          onClose={closeColumnFlyout}
         />
       ) : null}
 
@@ -607,8 +660,9 @@ export function OnboardingReview({ viewMode }: OnboardingReviewProps) {
   )
 }
 
-function ColumnFilterModal({
+function ColumnFilterFlyout({
   column,
+  position,
   filter,
   sort,
   onFilterChange,
@@ -618,6 +672,7 @@ function ColumnFilterModal({
   onClose,
 }: {
   column: ColumnConfig
+  position: FlyoutPosition
   filter: string
   sort: SortDirection
   onFilterChange: (value: string) => void
@@ -627,20 +682,19 @@ function ColumnFilterModal({
   onClose: () => void
 }) {
   return (
-    <DialogBackdrop role="presentation" onMouseDown={onClose}>
-      <DialogContent className="max-w-[420px]" role="dialog" aria-modal="true" aria-labelledby="column-filter-title" onMouseDown={(event) => event.stopPropagation()}>
-        <DialogHeader>
-          <h2 id="column-filter-title" className="text-lg font-semibold">{column.label}</h2>
-          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть" title="Закрыть">
-            <X size={ICON_SIZE} aria-hidden="true" />
-          </Button>
-        </DialogHeader>
-
-        <DialogBody className="grid gap-4">
+    <div className="fixed inset-0 z-50" role="presentation" onMouseDown={onClose}>
+      <section
+        className="absolute grid w-[min(300px,calc(100vw-2rem))] gap-3 rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl"
+        style={{ top: position.top, left: position.left }}
+        role="dialog"
+        aria-label={`Фильтр: ${column.label}`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="grid gap-3">
           <label className="grid gap-2">
-            <span className="text-sm font-medium">Фильтр</span>
+            <span className="text-xs font-medium text-muted-foreground">Фильтр</span>
             {column.filterField?.values?.length ? (
-              <select className="h-10 rounded-md border bg-card px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
+              <select className="h-9 rounded-md border bg-card px-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
                 <option value="">Все</option>
                 {column.filterField.values.map((value) => (
                   <option value={value} key={value}>
@@ -651,32 +705,45 @@ function ColumnFilterModal({
             ) : (
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                <Input className="pl-9" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)} />
+                <Input className="h-9 pl-9" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)} />
               </div>
             )}
           </label>
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Сортировка</span>
-            <select className="h-10 rounded-md border bg-card px-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring" value={sort} onChange={(event) => onSortChange(event.target.value as SortDirection)} disabled={!canSortColumn(column)}>
-              <option value="">Без сортировки</option>
-              <option value="asc">По возрастанию</option>
-              <option value="desc">По убыванию</option>
-            </select>
-          </label>
-        </DialogBody>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Сортировка</span>
+            <Button
+              type="button"
+              variant={sort ? 'secondary' : 'outline'}
+              size="sm"
+              className="h-8 min-w-36 justify-start"
+              onClick={() => onSortChange(getNextSortDirection(sort))}
+              disabled={!canSortColumn(column)}
+              aria-label="Изменить сортировку"
+              title="Изменить сортировку"
+            >
+              {getSortIcon(sort)}
+              {getSortToggleLabel(sort)}
+            </Button>
+          </div>
+        </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onReset}>
+        <footer className="flex items-center justify-between gap-2 border-t pt-2">
+          <Button type="button" variant="ghost" size="sm" onClick={onReset}>
             <RotateCcw size={ICON_SIZE} aria-hidden="true" />
             Очистить
           </Button>
-          <Button type="button" onClick={onApply}>
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть" title="Закрыть">
+              <X size={ICON_SIZE} aria-hidden="true" />
+            </Button>
+            <Button type="button" size="sm" onClick={onApply}>
             <Check size={ICON_SIZE} aria-hidden="true" />
             Применить
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </DialogBackdrop>
+            </Button>
+          </div>
+        </footer>
+      </section>
+    </div>
   )
 }
 
@@ -765,7 +832,7 @@ function OnboardingDetailModal({
                   <TableCell>{quietValue(application.applicantName)}</TableCell>
                 </tr>
                 <tr>
-                  <TableHead className="normal-case tracking-normal">Email</TableHead>
+                  <TableHead className="normal-case tracking-normal">Почта</TableHead>
                   <TableCell>{quietValue(application.applicantEmail)}</TableCell>
                 </tr>
                 <tr>

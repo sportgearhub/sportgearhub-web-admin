@@ -393,7 +393,7 @@ export function EquipmentTaxonomyReview() {
                 <th>Бренд</th>
                 <th>Статус</th>
                 <th>Страна / сайт</th>
-                <th>Провайдер</th>
+                <th>Поставщик</th>
                 <th>Обновлено</th>
               </tr>
             </thead>
@@ -638,7 +638,7 @@ function BrandReviewModal({
                   <td>{brand.normalizedName}</td>
                 </tr>
                 <tr>
-                  <th>Провайдер</th>
+                  <th>Поставщик</th>
                   <td>{brand.createdByProviderId ?? '—'}</td>
                 </tr>
                 <tr>

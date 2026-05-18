@@ -265,6 +265,75 @@ export type EquipmentBrandMergeCandidatesResponse = {
   items: EquipmentBrandMergeCandidateResponse[]
 }
 
+export type InternalUserSummaryResponse = {
+  userId: string
+  name: string
+  surname: string
+  email?: string | null
+  phone?: string | null
+  emailVerified: boolean
+  phoneVerified: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type InternalUserRoleResponse = {
+  userRoleId: string
+  userId: string
+  role: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type InternalExternalAuthProviderResponse = {
+  externalAuthProviderId: string
+  userId: string
+  provider: string
+  externalId: string
+  hasExternalToken: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type InternalProviderMembershipResponse = {
+  providerMembershipId: string
+  userId: string
+  providerId: string
+  role: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type InternalUserDetailResponse = InternalUserSummaryResponse & {
+  roles: InternalUserRoleResponse[]
+  externalAuthProviders: InternalExternalAuthProviderResponse[]
+  providerMemberships: InternalProviderMembershipResponse[]
+}
+
+export type ProviderGovernanceDiagnosticsResponse = {
+  hasProfileContact: boolean
+  activeResources: number
+  totalResources: number
+  activeOffers: number
+  totalOffers: number
+  acquiringConnectionId?: string | null
+  acquiringStatus?: string | null
+  activeRoutes: number
+  activeBindings: number
+  acquiringOnboardingStatus?: string | null
+}
+
+export type ProviderGovernanceSummaryResponse = {
+  providerId: string
+  displayName: string
+  overallStatus: string
+  capabilityStatus: string
+  settlementStatus: string
+  governanceStatus: string
+  diagnostics: ProviderGovernanceDiagnosticsResponse
+  updatedAt: string
+}
+
 function buildApiUrl(path: string) {
   return `${API_BASE_URL}${path}`
 }
@@ -425,4 +494,28 @@ export function postEquipmentBrandAction(brandId: string, request: EquipmentBran
     method: 'POST',
     body: JSON.stringify(request),
   })
+}
+
+export function getInternalUsers() {
+  return requestJson<InternalUserSummaryResponse[]>('/internal/users')
+}
+
+export function getInternalUser(userId: string) {
+  return requestJson<InternalUserDetailResponse>(`/internal/users/${encodeURIComponent(userId)}`)
+}
+
+export function getInternalUserRoles(userId: string) {
+  return requestJson<InternalUserRoleResponse[]>(`/internal/users/${encodeURIComponent(userId)}/roles`)
+}
+
+export function getInternalUserExternalAuthProviders(userId: string) {
+  return requestJson<InternalExternalAuthProviderResponse[]>(`/internal/users/${encodeURIComponent(userId)}/external-auth-providers`)
+}
+
+export function getProviderGovernanceQueue() {
+  return requestJson<ProviderGovernanceSummaryResponse[]>('/internal/providers/governance')
+}
+
+export function getInternalProviderMemberships(providerId: string) {
+  return requestJson<InternalProviderMembershipResponse[]>(`/internal/providers/${encodeURIComponent(providerId)}/memberships`)
 }
