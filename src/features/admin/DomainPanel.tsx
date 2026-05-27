@@ -3,7 +3,7 @@ import { FactTable } from '../../components/FactTable'
 import { Panel } from '../../components/Panel'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import { DialogBackdrop, DialogBody, DialogContent, DialogFooter, DialogHeader } from '../../components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import type { ConsoleAction, SectionRecord } from '../../types/admin'
 
@@ -95,17 +95,15 @@ function SectionDetailModal({
   onClose: () => void
 }) {
   return (
-    <DialogBackdrop role="presentation" onMouseDown={onClose}>
-      <DialogContent
-        className="max-w-[760px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="detail-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+    <Dialog open onOpenChange={(open) => {
+      if (!open) {
+        onClose()
+      }
+    }}>
+      <DialogContent className="max-w-[760px]">
         <DialogHeader>
           <div>
-            <h2 id="detail-title" className="text-xl font-semibold">{record.title}</h2>
+            <DialogTitle className="text-xl font-semibold">{record.title}</DialogTitle>
             <span className="text-sm text-muted-foreground">{record.id}</span>
           </div>
           <Button type="button" variant="outline" onClick={onClose}>
@@ -130,6 +128,6 @@ function SectionDetailModal({
           ))}
         </DialogFooter>
       </DialogContent>
-    </DialogBackdrop>
+    </Dialog>
   )
 }

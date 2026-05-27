@@ -1,5 +1,5 @@
 import { Button } from './ui/button'
-import { DialogBackdrop, DialogBody, DialogContent, DialogFooter, DialogHeader } from './ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import type { ConsoleAction } from '../types/admin'
 
 type ConsentModalProps = {
@@ -11,16 +11,14 @@ type ConsentModalProps = {
 
 export function ConsentModal({ action, operatorEmail, onCancel, onConfirm }: ConsentModalProps) {
   return (
-    <DialogBackdrop role="presentation" onMouseDown={onCancel}>
-      <DialogContent
-        className="max-w-[420px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="consent-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
+    <Dialog open onOpenChange={(open) => {
+      if (!open) {
+        onCancel()
+      }
+    }}>
+      <DialogContent className="max-w-[420px]">
         <DialogHeader>
-          <h2 id="consent-title" className="text-lg font-semibold">Подтвердите действие</h2>
+          <DialogTitle className="text-lg font-semibold">Подтвердите действие</DialogTitle>
         </DialogHeader>
         <DialogBody>
           <dl className="grid gap-2 text-sm">
@@ -43,6 +41,6 @@ export function ConsentModal({ action, operatorEmail, onCancel, onConfirm }: Con
           </Button>
         </DialogFooter>
       </DialogContent>
-    </DialogBackdrop>
+    </Dialog>
   )
 }

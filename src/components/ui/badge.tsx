@@ -1,8 +1,8 @@
 import { cva, type VariantProps } from 'class-variance-authority'
-import type { HTMLAttributes } from 'react'
-import { cn } from '../../lib/utils'
+import type { ComponentProps } from 'react'
+import { cn } from '@/lib/utils'
 
-const badgeVariants = cva('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors', {
+const badgeVariants = cva('inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-sm border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] [&>svg]:size-3 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[2px] aria-invalid:ring-destructive/20 aria-invalid:border-destructive', {
   variants: {
     variant: {
       default: 'border-transparent bg-primary text-primary-foreground',
@@ -19,8 +19,8 @@ const badgeVariants = cva('inline-flex items-center rounded-full border px-2.5 p
   },
 })
 
-export type BadgeProps = HTMLAttributes<HTMLDivElement> & VariantProps<typeof badgeVariants>
+export type BadgeProps = ComponentProps<'span'> & VariantProps<typeof badgeVariants>
 
 export function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />
+  return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />
 }

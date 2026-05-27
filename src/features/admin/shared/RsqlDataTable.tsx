@@ -292,7 +292,7 @@ export function RsqlDataTable<TRow>({
         </div>
       </div>
 
-      <TableFrame className="min-h-0 flex-1 rounded-none border-0 bg-background">
+      <TableFrame className="min-h-0 flex-1 rounded-none border-0 bg-card">
         <Table className="table-fixed">
           <colgroup>
             {columns.map((column) => (
@@ -309,7 +309,7 @@ export function RsqlDataTable<TRow>({
                   <TableHead key={column.key} className={column.align === 'right' ? 'px-2 text-right' : 'px-2'}>
                     <button
                       type="button"
-                      className="flex w-full items-start justify-between gap-2 rounded-md px-1 py-1 text-left hover:bg-background"
+                      className="flex w-full items-start justify-between gap-2 rounded-sm px-1 py-1 text-left hover:bg-muted/60"
                       onClick={(event) => openColumn(column, event.currentTarget)}
                     >
                       <span className="min-w-0 break-words">{column.label}</span>
@@ -360,7 +360,7 @@ export function RsqlDataTable<TRow>({
         <span>Страница {safePage} из {totalPages}</span>
         <div className="flex items-center gap-2">
           <select
-            className="h-8 rounded-md border bg-card px-2 text-sm outline-none"
+            className="h-8 rounded-sm border bg-card px-2 text-sm outline-none"
             value={pageSize}
             onChange={(event) => changePageSize(Number(event.target.value))}
           >
@@ -380,7 +380,7 @@ export function RsqlDataTable<TRow>({
       {activeColumn && flyoutPosition ? (
         <div className="fixed inset-0 z-50" role="presentation" onMouseDown={closeColumnFlyout}>
           <section
-            className="absolute grid w-[min(360px,calc(100vw-2rem))] gap-4 rounded-lg border bg-popover p-3 text-popover-foreground shadow-xl"
+            className="absolute grid w-[min(360px,calc(100vw-2rem))] gap-3 border bg-popover p-2 text-popover-foreground shadow-lg"
             style={{ top: flyoutPosition.top, left: flyoutPosition.left }}
             role="dialog"
             aria-labelledby="rsql-column-title"
@@ -392,11 +392,11 @@ export function RsqlDataTable<TRow>({
                 <X size={16} aria-hidden="true" />
               </Button>
             </header>
-            <div className="grid gap-4">
+            <div className="grid gap-3">
               <label className="grid gap-2">
                 <span className="text-sm font-medium">Фильтр</span>
                 {activeColumn.options?.length ? (
-                  <select className="h-10 rounded-md border bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring" value={filterDraft} onChange={(event) => setFilterDraft(event.target.value)}>
+                  <select className="h-8 rounded-sm border bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring" value={filterDraft} onChange={(event) => setFilterDraft(event.target.value)}>
                     <option value="">Все</option>
                     {activeColumn.options.map((option) => (
                       <option key={option} value={option}>{option}</option>
@@ -416,7 +416,7 @@ export function RsqlDataTable<TRow>({
               </label>
               <label className="grid gap-2">
                 <span className="text-sm font-medium">Сортировка</span>
-                <select className="h-10 rounded-md border bg-card px-3 text-sm outline-none focus:ring-2 focus:ring-ring" value={sortDraft} onChange={(event) => setSortDraft(event.target.value as SortDirection)}>
+                <select className="h-8 rounded-sm border bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring" value={sortDraft} onChange={(event) => setSortDraft(event.target.value as SortDirection)}>
                   <option value="">Без сортировки</option>
                   <option value="asc">По возрастанию</option>
                   <option value="desc">По убыванию</option>

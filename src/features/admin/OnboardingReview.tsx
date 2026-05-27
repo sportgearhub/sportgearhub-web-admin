@@ -3,6 +3,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  BarChart3,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -10,6 +11,7 @@ import {
   CircleCheck,
   CircleX,
   Filter,
+  LayoutGrid,
   Loader2,
   RefreshCw,
   RotateCcw,
@@ -19,7 +21,6 @@ import {
 } from 'lucide-react'
 import { Badge, type BadgeProps } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import { DialogBackdrop, DialogBody, DialogContent, DialogFooter, DialogHeader } from '../../components/ui/dialog'
 import { Input, Textarea } from '../../components/ui/input'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import type { OnboardingApplication, OnboardingViewMode, Severity } from '../../types/admin'
@@ -291,28 +292,19 @@ function mapOnboardingResponse(response: ProviderOnboardingResponse, fallback?: 
   }
 }
 
-function upsertApplication(applications: OnboardingApplication[], application: OnboardingApplication) {
-  const existingIndex = applications.findIndex((item) => item.id === application.id)
-
-  if (existingIndex === -1) {
-    return [application, ...applications]
-  }
-
-  return applications.map((item, index) => (index === existingIndex ? application : item))
-}
-
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
 type OnboardingReviewProps = {
   viewMode: OnboardingViewMode
+  onViewModeChange: (mode: OnboardingViewMode) => void
+  onOpenApplication: (applicationId: string) => void
   onTopBarContentChange?: (content: React.ReactNode | null) => void
 }
 
-export function OnboardingReview({ viewMode, onTopBarContentChange }: OnboardingReviewProps) {
+export function OnboardingReview({ viewMode, onViewModeChange, onOpenApplication, onTopBarContentChange }: OnboardingReviewProps) {
   const [applications, setApplications] = useState<OnboardingApplication[]>([])
-  const [selectedApplication, setSelectedApplication] = useState<OnboardingApplication | null>(null)
   const [columnState, setColumnState] = useState<ColumnState>(EMPTY_COLUMN_STATE)
   const [listOptions, setListOptions] = useState<ProviderOnboardingListOptionsResponse | null>(null)
   const [activeColumn, setActiveColumn] = useState<ColumnConfig | null>(null)
@@ -322,7 +314,6 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
   const [pagination, setPagination] = useState<PaginationResponse>(DEFAULT_PAGINATION)
   const [pageSize, setPageSize] = useState(20)
   const [lookupError, setLookupError] = useState('')
-  const [detailError, setDetailError] = useState('')
   const [isQueueLoading, setIsQueueLoading] = useState(true)
 
   const columns = useMemo(() => mergeColumnOptions(listOptions), [listOptions])
@@ -342,7 +333,6 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
           pageSize,
         })
         setLookupError('')
-        setDetailError('')
         setApplications(response.items.map(mapSummaryResponse))
         setPagination(response.pagination)
       } catch (error) {
@@ -382,28 +372,8 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
     }
   }, [loadQueue])
 
-  async function loadApplication(applicationId: string, fallback?: OnboardingApplication) {
-    const response = await getProviderOnboarding(applicationId)
-    const application = mapOnboardingResponse(response, fallback)
-
-    setApplications((currentApplications) => upsertApplication(currentApplications, application))
-    setSelectedApplication(application)
-    return application
-  }
-
-  async function openApplication(application: OnboardingApplication) {
-    setSelectedApplication(application)
-    setDetailError('')
-
-    if (!GUID_PATTERN.test(application.id)) {
-      return
-    }
-
-    try {
-      await loadApplication(application.id, application)
-    } catch (error) {
-      setDetailError(getErrorMessage(error, 'Не удалось обновить данные заявки'))
-    }
+  function openApplication(application: OnboardingApplication) {
+    onOpenApplication(application.id)
   }
 
   function openApplicationFromKeyboard(event: React.KeyboardEvent<HTMLTableRowElement>, application: OnboardingApplication) {
@@ -451,11 +421,6 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
     setSortDraft('')
   }
 
-  function updateApplication(application: OnboardingApplication) {
-    setApplications((currentApplications) => upsertApplication(currentApplications, application))
-    setSelectedApplication(application)
-  }
-
   const activeFilterCount = Object.values(columnState).filter((state) => state.filter.trim()).length
   const activeSortCount = Object.values(columnState).filter((state) => state.sort).length
 
@@ -489,25 +454,24 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
     return () => onTopBarContentChange(null)
   }, [activeFilterCount, activeSortCount, isQueueLoading, loadQueue, onTopBarContentChange, pagination.page, pagination.totalItems, viewMode])
 
-  if (viewMode === 'analytics') {
-    return (
-      <section className="grid min-h-[calc(100vh-3.5rem)] place-items-center border-t bg-background p-6">
-        <div className="max-w-md text-center">
-          <h2 className="text-lg font-semibold">Аналитика онбординга</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Здесь будет сводка по воронке, статусам и скорости ревью, когда появится аналитический контракт API.
-          </p>
-        </div>
-      </section>
-    )
-  }
-
   return (
     <>
-      <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden">
+      <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
+        <OnboardingTabs activeTab={viewMode} onTabChange={onViewModeChange} />
+        {viewMode === 'analytics' ? (
+        <div className="grid flex-1 place-items-center border-t bg-card p-4">
+            <div className="max-w-md text-center">
+              <h2 className="text-lg font-semibold">Аналитика онбординга</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Здесь будет сводка по воронке, статусам и скорости ревью, когда появится аналитический контракт API.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         {lookupError ? <p className="border-b px-2 py-2 text-sm font-medium text-destructive">{lookupError}</p> : null}
 
-        <TableFrame className="relative min-h-0 flex-1 rounded-none border-0 bg-background">
+        <TableFrame className="relative min-h-0 flex-1 rounded-none border-0 bg-card">
           <Table className="min-w-0 table-fixed">
             <colgroup>
               <col className="w-[31%]" />
@@ -527,7 +491,7 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
                     <TableHead key={column.key} className="px-3 py-2 align-top">
                       <button
                         type="button"
-                        className="flex w-full items-start justify-between gap-2 rounded-md px-1 py-1 text-left hover:bg-background"
+                        className="flex w-full items-start justify-between gap-2 rounded-md px-1 py-1 text-left hover:bg-muted/60"
                         onClick={(event) => openColumnFlyout(column, event.currentTarget)}
                       >
                         <span className="min-w-0 break-words">{column.label}</span>
@@ -547,7 +511,7 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
                     key={application.id}
                     className="cursor-pointer"
                     tabIndex={0}
-                    onClick={() => void openApplication(application)}
+                    onClick={() => openApplication(application)}
                     onKeyDown={(event) => openApplicationFromKeyboard(event, application)}
                   >
                     <TableCell className="min-w-0 px-2">
@@ -585,8 +549,8 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
             </TableBody>
           </Table>
           {isQueueLoading && applications.length ? (
-            <div className="absolute inset-0 grid place-items-center bg-background/55 backdrop-blur-[1px]">
-              <span className="inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
+            <div className="absolute inset-0 grid place-items-center bg-card/65 backdrop-blur-[1px]">
+              <span className="inline-flex items-center gap-2 border bg-card px-3 py-2 text-sm text-muted-foreground">
                 <Loader2 size={ICON_SIZE} className="animate-spin" aria-hidden="true" />
                 Обновляем заявки...
               </span>
@@ -598,7 +562,7 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
             <span className="truncate">
               Страница {pagination.page || 1} из {Math.max(pagination.totalPages, 1)} · всего {pagination.totalItems}
             </span>
-            <label className="flex h-8 items-center gap-2 rounded-md border bg-card px-2 text-sm" title="Строк на странице">
+            <label className="flex h-8 items-center gap-2 border bg-card px-2 text-sm" title="Строк на странице">
               <SlidersHorizontal size={ICON_SIZE} aria-hidden="true" />
               <select className="bg-transparent text-sm outline-none" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
                 <option value={10}>10</option>
@@ -632,6 +596,8 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
             </Button>
           </div>
         </footer>
+          </>
+        )}
       </section>
 
       {activeColumn && filterFlyoutPosition ? (
@@ -648,16 +614,41 @@ export function OnboardingReview({ viewMode, onTopBarContentChange }: Onboarding
         />
       ) : null}
 
-      {selectedApplication ? (
-        <OnboardingDetailModal
-          application={selectedApplication}
-          detailError={detailError}
-          onApplicationUpdated={updateApplication}
-          onClose={() => setSelectedApplication(null)}
-        />
-      ) : null}
     </>
   )
+}
+
+function OnboardingTabs({ activeTab, onTabChange }: { activeTab: OnboardingViewMode; onTabChange: (tab: OnboardingViewMode) => void }) {
+  return (
+    <div className="flex h-10 items-end gap-5 border-b bg-card px-3" role="tablist" aria-label="Онбординг">
+      <button
+        type="button"
+        className={getTabClassName(activeTab === 'table')}
+        onClick={() => onTabChange('table')}
+        role="tab"
+        aria-selected={activeTab === 'table'}
+      >
+        <LayoutGrid size={ICON_SIZE} aria-hidden="true" />
+        Заявки
+      </button>
+      <button
+        type="button"
+        className={getTabClassName(activeTab === 'analytics')}
+        onClick={() => onTabChange('analytics')}
+        role="tab"
+        aria-selected={activeTab === 'analytics'}
+      >
+        <BarChart3 size={ICON_SIZE} aria-hidden="true" />
+        Аналитика
+      </button>
+    </div>
+  )
+}
+
+function getTabClassName(active: boolean) {
+  return active
+    ? '-mb-px inline-flex h-10 items-center gap-1.5 border-b-2 border-primary px-0 text-sm font-medium text-foreground'
+    : '-mb-px inline-flex h-10 items-center gap-1.5 border-b-2 border-transparent px-0 text-sm font-medium text-muted-foreground hover:text-foreground'
 }
 
 function ColumnFilterFlyout({
@@ -684,7 +675,7 @@ function ColumnFilterFlyout({
   return (
     <div className="fixed inset-0 z-50" role="presentation" onMouseDown={onClose}>
       <section
-        className="absolute grid w-[min(300px,calc(100vw-2rem))] gap-3 rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl"
+        className="absolute grid w-[min(300px,calc(100vw-2rem))] gap-2 border bg-popover p-2 text-popover-foreground shadow-lg"
         style={{ top: position.top, left: position.left }}
         role="dialog"
         aria-label={`Фильтр: ${column.label}`}
@@ -694,7 +685,7 @@ function ColumnFilterFlyout({
           <label className="grid gap-2">
             <span className="text-xs font-medium text-muted-foreground">Фильтр</span>
             {column.filterField?.values?.length ? (
-              <select className="h-9 rounded-md border bg-card px-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-ring" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
+              <select className="h-8 rounded-sm border bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
                 <option value="">Все</option>
                 {column.filterField.values.map((value) => (
                   <option value={value} key={value}>
@@ -747,30 +738,89 @@ function ColumnFilterFlyout({
   )
 }
 
-function OnboardingDetailModal({
-  application,
-  detailError,
-  onApplicationUpdated,
-  onClose,
+type ApplicationDetailTab = 'summary' | 'legal' | 'decision'
+
+export function OnboardingApplicationPage({
+  applicationId,
+  onBack,
+  onTopBarContentChange,
 }: {
-  application: OnboardingApplication
-  detailError: string
-  onApplicationUpdated: (application: OnboardingApplication) => void
-  onClose: () => void
+  applicationId: string
+  onBack: () => void
+  onTopBarContentChange?: (content: React.ReactNode | null) => void
 }) {
+  const [application, setApplication] = useState<OnboardingApplication | null>(null)
+  const [activeTab, setActiveTab] = useState<ApplicationDetailTab>('summary')
+  const [detailError, setDetailError] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
   const [reasonCode, setReasonCode] = useState('')
   const [comments, setComments] = useState('')
   const [actionError, setActionError] = useState('')
   const [actionSuccess, setActionSuccess] = useState('')
   const [submittingAction, setSubmittingAction] = useState<ProviderOnboardingAction | null>(null)
-  const canReview = application.isApiBacked && GUID_PATTERN.test(application.id)
+  const canReview = Boolean(application?.isApiBacked && GUID_PATTERN.test(application.id))
+
+  const loadApplication = useCallback(async () => {
+    if (!GUID_PATTERN.test(applicationId)) {
+      setDetailError('Некорректный идентификатор заявки')
+      setApplication(null)
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const response = await getProviderOnboarding(applicationId)
+      setApplication(mapOnboardingResponse(response))
+      setDetailError('')
+    } catch (error) {
+      setApplication(null)
+      setDetailError(getErrorMessage(error, 'Не удалось загрузить заявку'))
+    } finally {
+      setIsLoading(false)
+    }
+  }, [applicationId])
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      void loadApplication()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [loadApplication])
+
+  useEffect(() => {
+    onTopBarContentChange?.(
+      <div className="flex min-w-0 items-center gap-1">
+        <Button type="button" variant="ghost" size="sm" onClick={onBack}>
+          <ChevronLeft size={ICON_SIZE} aria-hidden="true" />
+          Назад
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => void loadApplication()}
+          disabled={isLoading}
+          aria-label="Обновить заявку"
+          title="Обновить заявку"
+        >
+          {isLoading ? <Loader2 size={ICON_SIZE} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={ICON_SIZE} aria-hidden="true" />}
+        </Button>
+      </div>,
+    )
+
+    return () => onTopBarContentChange?.(null)
+  }, [isLoading, loadApplication, onBack, onTopBarContentChange])
 
   async function submitAction(action: ProviderOnboardingAction) {
     const requiresReason = action === 'request_changes' || action === 'reject'
     const normalizedReasonCode = reasonCode.trim()
     const normalizedComments = comments.trim()
 
-    if (!canReview) {
+    if (!canReview || !application) {
       setActionError('Сначала откройте заявку для проверки')
       return
     }
@@ -791,7 +841,7 @@ function OnboardingDetailModal({
         comments: normalizedComments || null,
       })
       const updatedApplication = mapOnboardingResponse(response.onboarding, application)
-      onApplicationUpdated(updatedApplication)
+      setApplication(updatedApplication)
       setActionSuccess(`Решение применено: ${response.result?.actionCode ?? action}`)
     } catch (error) {
       setActionError(getErrorMessage(error, 'Не удалось применить решение'))
@@ -800,123 +850,111 @@ function OnboardingDetailModal({
     }
   }
 
+  if (isLoading) {
+    return (
+      <section className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-card p-4">
+        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 size={ICON_SIZE} className="animate-spin" aria-hidden="true" />
+          Загружаем заявку...
+        </span>
+      </section>
+    )
+  }
+
+  if (!application) {
+    return (
+      <section className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-card p-4">
+        <div className="grid max-w-md gap-3 text-center">
+          <h2 className="text-lg font-semibold">Заявка недоступна</h2>
+          <p className="text-sm text-muted-foreground">{detailError || 'Не удалось открыть заявку.'}</p>
+          <Button type="button" variant="outline" className="justify-self-center" onClick={onBack}>
+            <ChevronLeft size={ICON_SIZE} aria-hidden="true" />
+            Вернуться к списку
+          </Button>
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <DialogBackdrop role="presentation" onMouseDown={onClose}>
-      <DialogContent
-        className="max-w-[920px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="onboarding-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <DialogHeader>
+    <section className="min-h-[calc(100vh-3.5rem)] bg-card">
+      <div className="border-b bg-card px-3 pt-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 id="onboarding-title" className="text-xl font-semibold">{application.providerName}</h2>
             <span className="block text-sm text-muted-foreground">{application.id}</span>
           </div>
-          <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть" title="Закрыть">
-            <X size={ICON_SIZE} aria-hidden="true" />
-          </Button>
-        </DialogHeader>
+          <Badge variant={getStatusBadgeVariant(application.status)}>{application.status}</Badge>
+        </div>
+        <div className="mt-2 flex flex-wrap items-end gap-5" role="tablist" aria-label="Разделы заявки">
+          <DetailTabButton active={activeTab === 'summary'} onClick={() => setActiveTab('summary')}>Сводка</DetailTabButton>
+          <DetailTabButton active={activeTab === 'legal'} onClick={() => setActiveTab('legal')}>Юрданные</DetailTabButton>
+          <DetailTabButton active={activeTab === 'decision'} onClick={() => setActiveTab('decision')}>Решение</DetailTabButton>
+        </div>
+      </div>
 
-        <DialogBody className="grid gap-4 lg:grid-cols-2">
-          {detailError ? <p className="text-sm font-medium text-destructive lg:col-span-2">{detailError}</p> : null}
+      <div className="p-4">
+        {detailError ? <p className="text-sm font-medium text-destructive lg:col-span-2">{detailError}</p> : null}
 
-          <section className="rounded-lg border bg-muted/30 p-4">
-            <h3 className="mb-3 text-sm font-semibold">Заявитель</h3>
-            <TableFrame>
-              <Table>
-                <TableBody>
-                <tr>
-                  <TableHead className="w-40 normal-case tracking-normal">Имя</TableHead>
-                  <TableCell>{quietValue(application.applicantName)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Почта</TableHead>
-                  <TableCell>{quietValue(application.applicantEmail)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Телефон</TableHead>
-                  <TableCell>{quietValue(application.contactPhone)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Статус</TableHead>
-                  <TableCell><Badge variant={getStatusBadgeVariant(application.status)}>{application.status}</Badge></TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Профиль</TableHead>
-                  <TableCell>{application.providerId ? application.providerId : <span className="text-muted-foreground">создастся после одобрения</span>}</TableCell>
-                </tr>
-                </TableBody>
-              </Table>
-            </TableFrame>
+        {activeTab === 'summary' ? (
+          <div className="grid gap-x-8 gap-y-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <section>
+              <h3 className="mb-2 text-sm font-semibold">Заявитель</h3>
+              <DetailFieldList
+                rows={[
+                  { label: 'Имя', value: quietValue(application.applicantName) },
+                  { label: 'Почта', value: quietValue(application.applicantEmail) },
+                  { label: 'Телефон', value: quietValue(application.contactPhone) },
+                  { label: 'Статус', value: <Badge variant={getStatusBadgeVariant(application.status)}>{application.status}</Badge> },
+                  {
+                    label: 'Профиль',
+                    value: application.providerId ? application.providerId : <span className="text-muted-foreground">создастся после одобрения</span>,
+                  },
+                ]}
+              />
+            </section>
+
+            <section>
+              <h3 className="mb-2 text-sm font-semibold">Чеклист</h3>
+              <ul className="grid gap-2">
+                {application.checklist.map((item) => (
+                  <li className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-sm" key={item.label}>
+                    <span className={item.done ? 'grid size-5 place-items-center rounded-full bg-primary text-primary-foreground' : 'grid size-5 place-items-center rounded-full bg-muted'}>{item.done ? <Check size={12} aria-hidden="true" /> : null}</span>
+                    <span>{item.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="lg:col-span-2">
+              <h3 className="mb-2 text-sm font-semibold">Заметка ревью</h3>
+              <p className="max-w-3xl text-sm text-muted-foreground">{application.reviewNote}</p>
+              {application.description ? <p className="mt-2 max-w-3xl text-sm">{application.description}</p> : null}
+            </section>
+          </div>
+        ) : null}
+
+        {activeTab === 'legal' ? (
+          <section>
+            <h3 className="mb-2 text-sm font-semibold">Юридические данные</h3>
+            <DetailFieldList
+              rows={[
+                { label: 'Название', value: quietValue(application.legalName) },
+                { label: 'Страна', value: quietValue(application.legalCountryCode) },
+                { label: 'Форма', value: quietValue(application.legalForm) },
+                { label: 'ИНН', value: application.taxId },
+                { label: 'ОГРН', value: quietValue(application.registrationNumber) },
+                { label: 'КПП', value: quietValue(application.branchNumber) },
+                { label: 'Юр. адрес', value: quietValue(application.registeredAddress) },
+                { label: 'Город', value: quietValue(application.city) },
+                { label: 'Адрес', value: quietValue(application.address) },
+              ]}
+            />
           </section>
+        ) : null}
 
-          <section className="rounded-lg border bg-muted/30 p-4">
-            <h3 className="mb-3 text-sm font-semibold">Юридические данные</h3>
-            <TableFrame>
-              <Table>
-                <TableBody>
-                <tr>
-                  <TableHead className="w-40 normal-case tracking-normal">Название</TableHead>
-                  <TableCell>{quietValue(application.legalName)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Страна</TableHead>
-                  <TableCell>{quietValue(application.legalCountryCode)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Форма</TableHead>
-                  <TableCell>{quietValue(application.legalForm)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">ИНН</TableHead>
-                  <TableCell>{application.taxId}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">ОГРН</TableHead>
-                  <TableCell>{quietValue(application.registrationNumber)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">КПП</TableHead>
-                  <TableCell>{quietValue(application.branchNumber)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Юр. адрес</TableHead>
-                  <TableCell>{quietValue(application.registeredAddress)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Город</TableHead>
-                  <TableCell>{quietValue(application.city)}</TableCell>
-                </tr>
-                <tr>
-                  <TableHead className="normal-case tracking-normal">Адрес</TableHead>
-                  <TableCell>{quietValue(application.address)}</TableCell>
-                </tr>
-                </TableBody>
-              </Table>
-            </TableFrame>
-          </section>
-
-          <section className="rounded-lg border bg-muted/30 p-4">
-            <h3 className="mb-3 text-sm font-semibold">Чеклист</h3>
-            <ul className="grid gap-2">
-              {application.checklist.map((item) => (
-                <li className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-2 text-sm" key={item.label}>
-                  <span className={item.done ? 'grid size-5 place-items-center rounded-full bg-primary text-primary-foreground' : 'grid size-5 place-items-center rounded-full bg-muted'}>{item.done ? <Check size={12} aria-hidden="true" /> : null}</span>
-                  <span>{item.label}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-lg border bg-muted/30 p-4">
-            <h3 className="mb-3 text-sm font-semibold">Заметка ревью</h3>
-            <p className="text-sm text-muted-foreground">{application.reviewNote}</p>
-            {application.description ? <p className="mt-2 text-sm">{application.description}</p> : null}
-          </section>
-
-          <section className="grid gap-3 rounded-lg border bg-muted/30 p-4 lg:col-span-2">
+        {activeTab === 'decision' ? (
+          <section className="grid max-w-3xl gap-3">
             <h3 className="text-sm font-semibold">Решение</h3>
             {!canReview ? <p className="text-sm text-muted-foreground">Откройте загруженную заявку, чтобы принять решение.</p> : null}
             <label className="grid gap-2">
@@ -934,26 +972,46 @@ function OnboardingDetailModal({
             </label>
             {actionError ? <p className="text-sm font-medium text-destructive">{actionError}</p> : null}
             {actionSuccess ? <p className="text-sm font-medium text-primary">{actionSuccess}</p> : null}
+            <footer className="flex flex-wrap justify-end gap-2 pt-1">
+              {REVIEW_ACTIONS.map((action) => (
+                <Button
+                  type="button"
+                  key={action.code}
+                  variant={action.tone === 'danger' ? 'destructive' : 'outline'}
+                  onClick={() => void submitAction(action.code)}
+                  disabled={!canReview || Boolean(submittingAction)}
+                >
+                  {action.code === 'approve' ? <CircleCheck size={ICON_SIZE} aria-hidden="true" /> : null}
+                  {action.code === 'request_changes' ? <CircleAlert size={ICON_SIZE} aria-hidden="true" /> : null}
+                  {action.code === 'reject' ? <CircleX size={ICON_SIZE} aria-hidden="true" /> : null}
+                  {submittingAction === action.code ? 'Отправляем...' : action.label}
+                </Button>
+              ))}
+            </footer>
           </section>
-        </DialogBody>
+        ) : null}
+      </div>
+    </section>
+  )
+}
 
-        <DialogFooter>
-          {REVIEW_ACTIONS.map((action) => (
-            <Button
-              type="button"
-              key={action.code}
-              variant={action.tone === 'danger' ? 'destructive' : 'outline'}
-              onClick={() => void submitAction(action.code)}
-              disabled={!canReview || Boolean(submittingAction)}
-            >
-              {action.code === 'approve' ? <CircleCheck size={ICON_SIZE} aria-hidden="true" /> : null}
-              {action.code === 'request_changes' ? <CircleAlert size={ICON_SIZE} aria-hidden="true" /> : null}
-              {action.code === 'reject' ? <CircleX size={ICON_SIZE} aria-hidden="true" /> : null}
-              {submittingAction === action.code ? 'Отправляем...' : action.label}
-            </Button>
-          ))}
-        </DialogFooter>
-      </DialogContent>
-    </DialogBackdrop>
+function DetailTabButton({ active, children, onClick }: { active: boolean; children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" className={getTabClassName(active)} onClick={onClick} role="tab" aria-selected={active}>
+      {children}
+    </button>
+  )
+}
+
+function DetailFieldList({ rows }: { rows: Array<{ label: string; value: React.ReactNode }> }) {
+  return (
+    <dl className="max-w-3xl divide-y text-sm">
+      {rows.map((row) => (
+        <div className="grid gap-1 py-2 sm:grid-cols-[180px_minmax(0,1fr)]" key={row.label}>
+          <dt className="text-muted-foreground">{row.label}</dt>
+          <dd className="min-w-0 break-words">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
   )
 }

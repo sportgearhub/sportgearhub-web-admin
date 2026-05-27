@@ -1,7 +1,7 @@
 import { Route, ShieldCheck, UsersRound, X } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import { DialogBackdrop, DialogBody, DialogContent, DialogHeader } from '../../../components/ui/dialog'
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import type { InternalProviderMembershipResponse, InternalUserSummaryResponse, ProviderGovernanceSummaryResponse } from '../adminApi'
 import { BooleanBadge } from '../shared/RsqlDataTable'
@@ -33,30 +33,34 @@ export function ProviderDetailModal({
   const userLookup = getUserLookup(users)
 
   return (
-    <DialogBackdrop role="presentation" onMouseDown={onClose}>
-      <DialogContent className="max-w-[1080px]" role="dialog" aria-modal="true" aria-labelledby="provider-detail-title" onMouseDown={(event) => event.stopPropagation()}>
+    <Dialog open onOpenChange={(open) => {
+      if (!open) {
+        onClose()
+      }
+    }}>
+      <DialogContent className="max-w-[1080px]">
         <DialogHeader>
           <div className="min-w-0">
-            <h2 id="provider-detail-title" className="truncate text-xl font-semibold">{provider.displayName}</h2>
+            <DialogTitle className="truncate text-xl font-semibold">{provider.displayName}</DialogTitle>
             <span className="block truncate text-sm text-muted-foreground">Доступы и операционный контроль</span>
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть">
             <X size={16} aria-hidden="true" />
           </Button>
         </DialogHeader>
-        <DialogBody className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-          <section className="grid content-start gap-3 rounded-lg border bg-muted/30 p-4">
+        <DialogBody className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+          <section className="grid content-start gap-2">
             <div className="flex items-center gap-2">
               <ShieldCheck size={16} className="text-primary" />
               <h3 className="text-sm font-semibold">Контроль</h3>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-1.5 sm:grid-cols-2">
               <Badge variant={getOperationalStatusVariant(provider.overallStatus)}>Сводно: {provider.overallStatus}</Badge>
               <Badge variant={getOperationalStatusVariant(provider.governanceStatus)}>Контроль: {provider.governanceStatus}</Badge>
               <Badge variant={getOperationalStatusVariant(provider.capabilityStatus)}>Возможности: {provider.capabilityStatus}</Badge>
               <Badge variant={getOperationalStatusVariant(provider.settlementStatus)}>Расчеты: {provider.settlementStatus}</Badge>
             </div>
-            <div className="mt-2 grid gap-2 text-sm">
+            <div className="mt-1 grid gap-1 text-sm">
               <div className="flex justify-between border-b py-1"><span className="text-muted-foreground">Контакт профиля</span><BooleanBadge value={provider.diagnostics.hasProfileContact} /></div>
               <div className="flex justify-between border-b py-1"><span className="text-muted-foreground">Ресурсы</span><strong>{provider.diagnostics.activeResources}/{provider.diagnostics.totalResources}</strong></div>
               <div className="flex justify-between border-b py-1"><span className="text-muted-foreground">Офферы</span><strong>{provider.diagnostics.activeOffers}/{provider.diagnostics.totalOffers}</strong></div>
@@ -65,7 +69,7 @@ export function ProviderDetailModal({
             </div>
           </section>
 
-          <section className="grid content-start gap-3 rounded-lg border bg-muted/30 p-4">
+          <section className="grid content-start gap-2">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <UsersRound size={16} className="text-primary" />
@@ -109,21 +113,21 @@ export function ProviderDetailModal({
             </TableFrame>
           </section>
 
-          <section className="rounded-lg border bg-muted/30 p-4 xl:col-span-2">
-            <div className="mb-3 flex items-center gap-2">
+          <section className="xl:col-span-2">
+            <div className="mb-2 flex items-center gap-2">
               <Route size={16} className="text-primary" />
               <h3 className="text-sm font-semibold">Эквайринг и маршрутизация</h3>
             </div>
-            <div className="grid gap-2 text-sm sm:grid-cols-3">
-              <div className="rounded-md border bg-card p-3">
+            <div className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+              <div>
                 <span className="block text-xs text-muted-foreground">Эквайринг</span>
                 <strong>{provider.diagnostics.acquiringStatus ?? '—'}</strong>
               </div>
-              <div className="rounded-md border bg-card p-3">
+              <div>
                 <span className="block text-xs text-muted-foreground">Онбординг</span>
                 <strong>{provider.diagnostics.acquiringOnboardingStatus ?? '—'}</strong>
               </div>
-              <div className="rounded-md border bg-card p-3">
+              <div>
                 <span className="block text-xs text-muted-foreground">Подключение</span>
                 <strong className="block truncate">{provider.diagnostics.acquiringConnectionId ?? '—'}</strong>
               </div>
@@ -131,6 +135,6 @@ export function ProviderDetailModal({
           </section>
         </DialogBody>
       </DialogContent>
-    </DialogBackdrop>
+    </Dialog>
   )
 }

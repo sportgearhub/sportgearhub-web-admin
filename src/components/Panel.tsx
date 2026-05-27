@@ -12,12 +12,12 @@ type PanelHeaderProps = {
 }
 
 export function Panel({ children, className = '' }: PanelProps) {
-  return <Card className={cn('min-w-0 p-4', className)}>{children}</Card>
+  return <Card className={cn('min-w-0 p-3', className)}>{children}</Card>
 }
 
 export function PanelHeader({ title }: PanelHeaderProps) {
   return (
-    <CardHeader className="mb-3 border-b p-0 pb-3">
+    <CardHeader className="mb-2 border-b p-0 pb-2">
       <CardTitle>{title}</CardTitle>
     </CardHeader>
   )

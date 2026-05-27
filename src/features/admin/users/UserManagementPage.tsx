@@ -16,7 +16,7 @@ export function UserManagementPage() {
   const pageSizeOptions = useMemo(() => buildPageSizeOptions(defaultPageSize, maxPageSize), [defaultPageSize, maxPageSize])
 
   return (
-    <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-background">
+    <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
       {error ? <p className="border-b px-3 py-2 text-sm font-medium text-destructive">{error}</p> : null}
       <RsqlDataTable
         rows={users}

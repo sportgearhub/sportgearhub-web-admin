@@ -5,7 +5,7 @@ import { MetricsGrid } from './components/MetricsGrid'
 import { navGroups, navItems, sectionActions } from './data/adminConfig'
 import { DomainPanel } from './features/admin/DomainPanel'
 import { EquipmentTaxonomyReview } from './features/admin/EquipmentTaxonomyReview'
-import { OnboardingReview } from './features/admin/OnboardingReview'
+import { OnboardingApplicationPage, OnboardingReview } from './features/admin/OnboardingReview'
 import { ProviderManagementPage } from './features/admin/providers/ProviderManagementPage'
 import { UserManagementPage } from './features/admin/users/UserManagementPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
@@ -18,6 +18,8 @@ import { ConsoleShell } from './layout/ConsoleShell'
 import type { AdminSectionId, AdminSession, ConsoleAction, OnboardingViewMode } from './types/admin'
 
 const CONSOLE_PATH = '/console'
+const ONBOARDING_PATH = '/console/onboarding'
+const ONBOARDING_APPLICATIONS_PATH = '/console/onboarding/applications'
 const FORGOT_PASSWORD_PATH = '/auth/forgot-password'
 const RESET_PASSWORD_PATH = '/auth/reset-password'
 const SIGN_IN_PATH = '/sign-in'
@@ -40,6 +42,30 @@ function pushPath(path: string) {
   }
 }
 
+function getSectionPath(section: AdminSectionId) {
+  if (section === 'onboarding') {
+    return ONBOARDING_PATH
+  }
+
+  return CONSOLE_PATH
+}
+
+function getSectionFromPath(path: string): AdminSectionId | null {
+  if (path === ONBOARDING_PATH || path.startsWith(`${ONBOARDING_PATH}/`)) {
+    return 'onboarding'
+  }
+
+  return null
+}
+
+function getOnboardingApplicationId(path: string) {
+  if (!path.startsWith(`${ONBOARDING_APPLICATIONS_PATH}/`)) {
+    return ''
+  }
+
+  return decodeURIComponent(path.slice(ONBOARDING_APPLICATIONS_PATH.length + 1))
+}
+
 function isSignInPath(path: string) {
   return SIGN_IN_PATHS.has(path.replace(/\/+$/, '') || '/')
 }
@@ -52,7 +78,7 @@ function isAuthPath(path: string) {
 
 function App() {
   const [activeSession, setActiveSession] = useState<AdminSession | null>(null)
-  const [activeSection, setActiveSection] = useState<AdminSectionId>('overview')
+  const [activeSection, setActiveSection] = useState<AdminSectionId>(() => getSectionFromPath(getCurrentPath()) ?? 'overview')
   const [onboardingViewMode, setOnboardingViewMode] = useState<OnboardingViewMode>('table')
   const [topBarContent, setTopBarContent] = useState<React.ReactNode | null>(null)
   const [pendingAction, setPendingAction] = useState<ConsoleAction | null>(null)
@@ -94,6 +120,20 @@ function App() {
     navigateTo(CONSOLE_PATH)
   }, [navigateTo])
 
+  const handleSectionChange = useCallback((section: AdminSectionId) => {
+    setTopBarContent(null)
+    setActiveSection(section)
+    navigateTo(getSectionPath(section))
+  }, [navigateTo])
+
+  const openOnboardingApplication = useCallback((applicationId: string) => {
+    navigateTo(`${ONBOARDING_APPLICATIONS_PATH}/${encodeURIComponent(applicationId)}`)
+  }, [navigateTo])
+
+  const closeOnboardingApplication = useCallback(() => {
+    navigateTo(ONBOARDING_PATH)
+  }, [navigateTo])
+
   useEffect(() => {
     function handlePathChange() {
       const nextPath = getCurrentPath()
@@ -103,6 +143,13 @@ function App() {
 
       if (isAuthPath(nextPath)) {
         clearAdminState()
+        return
+      }
+
+      const nextSection = getSectionFromPath(nextPath)
+
+      if (nextSection) {
+        setActiveSection(nextSection)
       }
     }
 
@@ -261,25 +308,36 @@ function App() {
       currentSection={currentSection}
       navGroups={navGroups}
       operator={activeSession}
-      onboardingViewMode={onboardingViewMode}
       topBarContent={topBarContent}
-      onSectionChange={setActiveSection}
-      onOnboardingViewModeChange={setOnboardingViewMode}
+      onSectionChange={handleSectionChange}
       onSignOut={signOut}
     >
       {activeSection === 'overview' ? (
-        <>
+        <section className="min-h-[calc(100vh-3.5rem)] bg-card p-3">
           <MetricsGrid />
 
-          <section className="rounded-lg border bg-card p-5">
+          <section>
             <h2 className="text-sm font-semibold">Операционная консоль</h2>
             <p className="mt-1 text-sm text-muted-foreground">Выберите раздел в навигации для работы с реальными API-очередями.</p>
           </section>
-        </>
+        </section>
       ) : (
         <>
           {activeSection === 'onboarding' ? (
-            <OnboardingReview viewMode={onboardingViewMode} onTopBarContentChange={setTopBarContent} />
+            getOnboardingApplicationId(normalizedPath) ? (
+              <OnboardingApplicationPage
+                applicationId={getOnboardingApplicationId(normalizedPath)}
+                onBack={closeOnboardingApplication}
+                onTopBarContentChange={setTopBarContent}
+              />
+            ) : (
+              <OnboardingReview
+                viewMode={onboardingViewMode}
+                onViewModeChange={setOnboardingViewMode}
+                onOpenApplication={openOnboardingApplication}
+                onTopBarContentChange={setTopBarContent}
+              />
+            )
           ) : activeSection === 'governance' ? (
             <ProviderManagementPage />
           ) : activeSection === 'users' ? (
