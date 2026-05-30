@@ -379,6 +379,152 @@ export type ProviderGovernanceSummaryResponse = {
   updatedAt: string
 }
 
+export type ProviderProfileResponse = {
+  providerId: string
+  displayName: string
+  legalName?: string | null
+  legalCountryCode?: string | null
+  legalForm?: string | null
+  taxNumber?: string | null
+  registrationNumber?: string | null
+  branchNumber?: string | null
+  registeredAddress?: string | null
+  contactEmail?: string | null
+  contactPhone?: string | null
+  cityId?: string | null
+  address?: string | null
+  description?: string | null
+  operatingState: string
+  operatingSummary?: Array<{
+    value?: string | null
+    label?: string | null
+  }> | null
+  profileMetadata?: {
+    governance?: {
+      operatingState?: string | null
+    } | null
+    reviewReasonCode?: string | null
+    reviewMessage?: string | null
+    reviewActorUserId?: string | null
+  } | null
+  updatedAt: string
+}
+
+export type ProviderPayoutMode = 't_bank_bank_account' | 't_bank_sbp_individual' | string
+
+export type ProviderPayoutBankRequisites = {
+  account?: string | null
+  bankName?: string | null
+  bik?: string | null
+  correspondentAccount?: string | null
+}
+
+export type ProviderSbpPayout = {
+  beneficiaryName?: string | null
+  phone?: string | null
+  sbpMemberId?: string | null
+  displayBankName?: string | null
+}
+
+export type ProviderPayoutContractResponse = {
+  contractId: string
+  providerId: string
+  payoutMode: ProviderPayoutMode
+  contractNumber: number
+  currency: string
+  startsOn: string
+  status: string
+  bankRequisites?: ProviderPayoutBankRequisites | null
+  sbpPayout?: ProviderSbpPayout | null
+  tBankSbpPayoutRecipient?: unknown
+  tBankShop?: unknown
+  createdAt: string
+  updatedAt: string
+}
+
+export type ProviderPayoutContractRequest = {
+  payoutMode: ProviderPayoutMode
+  currency: string
+  startsOn: string
+  status: string
+  bankRequisites?: ProviderPayoutBankRequisites | null
+  sbpPayout?: ProviderSbpPayout | null
+}
+
+export type ProviderPayoutCommandResponse = {
+  contract: ProviderPayoutContractResponse
+  connection?: unknown
+  result?: {
+    status?: string
+    actionCode?: string
+    reasonCode?: string | null
+  }
+}
+
+export type ProviderPayoutSetupDraftResponse = {
+  providerId: string
+  contractId: string
+  payoutMode: ProviderPayoutMode
+  contract: ProviderPayoutContractResponse
+  suggestedSbpPayout?: ProviderSbpPayout | null
+  suggestedBankRequisitesRegistration?: unknown
+}
+
+export type ProviderPayoutContractOptionsResponse = {
+  payoutModes: Array<{
+    key: string
+    value: string
+  }>
+  statuses: Array<{
+    key: string
+    value: string
+  }>
+  setupActions: Array<{
+    key: string
+    value: string
+  }>
+}
+
+export type PublicAddressSuggestion = {
+  value: string
+  unrestrictedValue?: string | null
+  postalCode?: string | null
+  country?: string | null
+  countryIsoCode?: string | null
+  region?: string | null
+  city?: string | null
+  street?: string | null
+  house?: string | null
+  flat?: string | null
+  qcGeo?: string | null
+  source?: string | null
+}
+
+export type PublicAddressSuggestionsResponse = {
+  provider: string
+  suggestions: PublicAddressSuggestion[]
+}
+
+export type PublicBankByBicResponse = {
+  source?: string | null
+  value?: string | null
+  unrestrictedValue?: string | null
+  bic: string
+  swift?: string | null
+  swifts?: string[] | null
+  inn?: string | null
+  branchNumber?: string | null
+  registrationNumber?: string | null
+  correspondentAccount?: string | null
+  paymentName?: string | null
+  shortName?: string | null
+  paymentCity?: string | null
+  opfType?: string | null
+  address?: string | null
+  unrestrictedAddress?: string | null
+  stateStatus?: string | null
+}
+
 export type ProviderGovernanceListResponse = {
   items: ProviderGovernanceSummaryResponse[]
   pagination: PaginationResponse
@@ -626,6 +772,77 @@ export function getProviderGovernanceOptions() {
   return requestJson<ProviderGovernanceOptionsResponse>('/internal/providers/governance/options')
 }
 
+export function getInternalProviderProfile(providerId: string) {
+  return requestJson<ProviderProfileResponse>(`/internal/providers/${encodeURIComponent(providerId)}/profile`)
+}
+
 export function getInternalProviderMemberships(providerId: string) {
   return requestJson<InternalProviderMembershipResponse[]>(`/internal/providers/${encodeURIComponent(providerId)}/memberships`)
+}
+
+export function getProviderPayoutContracts(providerId: string) {
+  return requestJson<ProviderPayoutContractResponse[]>(`/internal/providers/${encodeURIComponent(providerId)}/payout-contracts`)
+}
+
+export function postProviderPayoutContract(providerId: string, request: ProviderPayoutContractRequest) {
+  return requestJson<ProviderPayoutCommandResponse>(`/internal/providers/${encodeURIComponent(providerId)}/payout-contracts`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export function putProviderPayoutContract(providerId: string, contractId: string, request: ProviderPayoutContractRequest) {
+  return requestJson<ProviderPayoutCommandResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    },
+  )
+}
+
+export function getProviderPayoutSetupDraft(providerId: string, contractId: string) {
+  return requestJson<ProviderPayoutSetupDraftResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}/setup-draft`,
+  )
+}
+
+export function getProviderPayoutContractOptions() {
+  return requestJson<ProviderPayoutContractOptionsResponse>('/internal/provider-payout-contracts/options')
+}
+
+export function postProviderPayoutSbpRecipientRegister(providerId: string, contractId: string, sbpPayout: ProviderSbpPayout) {
+  return requestJson<ProviderPayoutCommandResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}/t-bank/sbp-recipient/register`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ sbpPayout }),
+    },
+  )
+}
+
+export function postProviderPayoutTBankShopRegister(providerId: string, contractId: string, request: unknown) {
+  return requestJson<ProviderPayoutCommandResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}/t-bank/shop/register`,
+    {
+      method: 'POST',
+      body: JSON.stringify(request),
+    },
+  )
+}
+
+export function postPublicAddressSuggestions(query: string, count = 10, signal?: AbortSignal) {
+  return requestJson<PublicAddressSuggestionsResponse>('/api/v1/public/suggestions/address', {
+    method: 'POST',
+    body: JSON.stringify({ query, count }),
+    signal,
+  })
+}
+
+export function postPublicBankByBic(bic: string, signal?: AbortSignal) {
+  return requestJson<PublicBankByBicResponse>('/api/v1/public/suggestions/bank-by-bic', {
+    method: 'POST',
+    body: JSON.stringify({ bic }),
+    signal,
+  })
 }

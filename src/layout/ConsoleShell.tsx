@@ -109,11 +109,10 @@ export function ConsoleShell({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b bg-card/95 px-3 backdrop-blur">
-          <div className="min-w-0">
-            <h1 className="truncate text-sm font-semibold">{currentSection.label}</h1>
+          <div className="min-w-0 flex-1">
+            {topBarContent ?? <h1 className="truncate text-sm font-semibold">{currentSection.label}</h1>}
           </div>
           <div className="flex min-w-0 items-center gap-3">
-            {topBarContent}
             <div className="hidden min-w-0 text-right sm:block">
               <div className="truncate text-xs text-muted-foreground">{operator.name}</div>
               <strong className="block truncate text-sm font-medium">{operator.email}</strong>

@@ -6,6 +6,7 @@ import { navGroups, navItems, sectionActions } from './data/adminConfig'
 import { DomainPanel } from './features/admin/DomainPanel'
 import { EquipmentTaxonomyReview } from './features/admin/EquipmentTaxonomyReview'
 import { OnboardingApplicationPage, OnboardingReview } from './features/admin/OnboardingReview'
+import { ProviderDetailPage } from './features/admin/providers/ProviderDetailPage'
 import { ProviderManagementPage } from './features/admin/providers/ProviderManagementPage'
 import { UserManagementPage } from './features/admin/users/UserManagementPage'
 import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
@@ -20,6 +21,7 @@ import type { AdminSectionId, AdminSession, ConsoleAction, OnboardingViewMode } 
 const CONSOLE_PATH = '/console'
 const ONBOARDING_PATH = '/console/onboarding'
 const ONBOARDING_APPLICATIONS_PATH = '/console/onboarding/applications'
+const PROVIDERS_PATH = '/console/providers'
 const FORGOT_PASSWORD_PATH = '/auth/forgot-password'
 const RESET_PASSWORD_PATH = '/auth/reset-password'
 const SIGN_IN_PATH = '/sign-in'
@@ -47,12 +49,20 @@ function getSectionPath(section: AdminSectionId) {
     return ONBOARDING_PATH
   }
 
+  if (section === 'governance') {
+    return PROVIDERS_PATH
+  }
+
   return CONSOLE_PATH
 }
 
 function getSectionFromPath(path: string): AdminSectionId | null {
   if (path === ONBOARDING_PATH || path.startsWith(`${ONBOARDING_PATH}/`)) {
     return 'onboarding'
+  }
+
+  if (path === PROVIDERS_PATH || path.startsWith(`${PROVIDERS_PATH}/`)) {
+    return 'governance'
   }
 
   return null
@@ -64,6 +74,30 @@ function getOnboardingApplicationId(path: string) {
   }
 
   return decodeURIComponent(path.slice(ONBOARDING_APPLICATIONS_PATH.length + 1))
+}
+
+function getProviderIdFromPath(path: string) {
+  if (!path.startsWith(`${PROVIDERS_PATH}/`)) {
+    return ''
+  }
+
+  return decodeURIComponent(path.slice(PROVIDERS_PATH.length + 1).split('/')[0] ?? '')
+}
+
+function getProviderPayoutContractIdFromPath(path: string) {
+  const providerId = getProviderIdFromPath(path)
+
+  if (!providerId) {
+    return ''
+  }
+
+  const payoutContractsPath = `${PROVIDERS_PATH}/${encodeURIComponent(providerId)}/payout-contracts/`
+
+  if (!path.startsWith(payoutContractsPath)) {
+    return ''
+  }
+
+  return decodeURIComponent(path.slice(payoutContractsPath.length))
 }
 
 function isSignInPath(path: string) {
@@ -110,6 +144,8 @@ function App() {
   }, [currentSearch])
 
   const normalizedPath = currentPath.replace(/\/+$/, '') || '/'
+  const currentProviderId = useMemo(() => getProviderIdFromPath(normalizedPath), [normalizedPath])
+  const currentProviderPayoutContractId = useMemo(() => getProviderPayoutContractIdFromPath(normalizedPath), [normalizedPath])
 
   const goToForgotPassword = useCallback(() => {
     clearAdminState()
@@ -133,6 +169,40 @@ function App() {
   const closeOnboardingApplication = useCallback(() => {
     navigateTo(ONBOARDING_PATH)
   }, [navigateTo])
+
+  const openProvider = useCallback((providerId: string) => {
+    navigateTo(`${PROVIDERS_PATH}/${encodeURIComponent(providerId)}`)
+  }, [navigateTo])
+
+  const closeProvider = useCallback(() => {
+    navigateTo(PROVIDERS_PATH)
+  }, [navigateTo])
+
+  const openProviderPayoutContract = useCallback((providerId: string, contractId: string) => {
+    navigateTo(`${PROVIDERS_PATH}/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}`)
+  }, [navigateTo])
+
+  const closeProviderPayoutContract = useCallback((providerId: string) => {
+    navigateTo(`${PROVIDERS_PATH}/${encodeURIComponent(providerId)}`)
+  }, [navigateTo])
+
+  const openCurrentProviderPayoutContract = useCallback((contractId: string) => {
+    if (currentProviderId) {
+      openProviderPayoutContract(currentProviderId, contractId)
+    }
+  }, [currentProviderId, openProviderPayoutContract])
+
+  const newCurrentProviderPayoutContract = useCallback(() => {
+    if (currentProviderId) {
+      openProviderPayoutContract(currentProviderId, 'new')
+    }
+  }, [currentProviderId, openProviderPayoutContract])
+
+  const closeCurrentProviderPayoutContract = useCallback(() => {
+    if (currentProviderId) {
+      closeProviderPayoutContract(currentProviderId)
+    }
+  }, [closeProviderPayoutContract, currentProviderId])
 
   useEffect(() => {
     function handlePathChange() {
@@ -339,7 +409,19 @@ function App() {
               />
             )
           ) : activeSection === 'governance' ? (
-            <ProviderManagementPage />
+            currentProviderId ? (
+              <ProviderDetailPage
+                providerId={currentProviderId}
+                payoutContractId={currentProviderPayoutContractId || undefined}
+                onBack={closeProvider}
+                onOpenPayoutContract={openCurrentProviderPayoutContract}
+                onNewPayoutContract={newCurrentProviderPayoutContract}
+                onClosePayoutContract={closeCurrentProviderPayoutContract}
+                onTopBarContentChange={setTopBarContent}
+              />
+            ) : (
+              <ProviderManagementPage onOpenProvider={openProvider} />
+            )
           ) : activeSection === 'users' ? (
             <UserManagementPage />
           ) : activeSection === 'canonicalization' ? (

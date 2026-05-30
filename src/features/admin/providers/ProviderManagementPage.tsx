@@ -1,28 +1,24 @@
 import { useMemo } from 'react'
 import { RsqlDataTable } from '../shared/RsqlDataTable'
 import { createProviderColumns } from './providerColumns'
-import { ProviderDetailModal } from './ProviderDetailModal'
 import { useProviderManagement } from './useProviderManagement'
 
 function buildPageSizeOptions(defaultPageSize: number, maxPageSize: number) {
   return Array.from(new Set([10, 20, 50, 100, defaultPageSize].filter((pageSize) => pageSize <= maxPageSize))).sort((left, right) => left - right)
 }
 
-export function ProviderManagementPage() {
+type ProviderManagementPageProps = {
+  onOpenProvider: (providerId: string) => void
+}
+
+export function ProviderManagementPage({ onOpenProvider }: ProviderManagementPageProps) {
   const {
     providers,
-    users,
-    selectedProvider,
-    memberships,
     pagination,
     listOptions,
     isLoading,
-    isMembershipLoading,
     error,
-    membershipError,
     loadProviders,
-    openProvider,
-    closeProvider,
   } = useProviderManagement()
 
   const statusOptions = useMemo(() => Array.from(new Set(providers.flatMap((provider) => [
@@ -51,18 +47,8 @@ export function ProviderManagementPage() {
         initialSort={listOptions?.defaultSort}
         pagination={pagination}
         onQueryChange={(query) => void loadProviders(query)}
-        onRowOpen={openProvider}
+        onRowOpen={(provider) => onOpenProvider(provider.providerId)}
       />
-      {selectedProvider ? (
-        <ProviderDetailModal
-          provider={selectedProvider}
-          memberships={memberships}
-          users={users}
-          membershipError={membershipError}
-          isMembershipLoading={isMembershipLoading}
-          onClose={closeProvider}
-        />
-      ) : null}
     </section>
   )
 }
