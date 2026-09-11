@@ -1,4 +1,5 @@
 import { getFreshAuthorizationHeader, refreshStoredAuthTokens } from '../auth/authApi'
+import { keysToCamel, keysToSnake } from '../../lib/case-convert'
 import { getStoredAuthTokens } from '../auth/authTokenStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
@@ -6,6 +7,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? '
 type ApiErrorBody = {
   message?: string
   title?: string
+}
+
+export class NotFoundError extends Error {
+  constructor(message?: string) {
+    super(message)
+    this.name = 'NotFoundError'
+  }
 }
 
 export type ProviderOnboardingChecklistStatus = 0 | 1
@@ -437,7 +445,7 @@ export type ProviderPayoutContractResponse = {
   bankRequisites?: ProviderPayoutBankRequisites | null
   sbpPayout?: ProviderSbpPayout | null
   tBankSbpPayoutRecipient?: unknown
-  tBankShop?: unknown
+  tBankShop?: ProviderTBankShopResponse | null
   createdAt: string
   updatedAt: string
 }
@@ -483,6 +491,80 @@ export type ProviderPayoutContractOptionsResponse = {
     key: string
     value: string
   }>
+}
+
+export type ProviderTBankShopLegalAddress = {
+  type: string
+  zip: string
+  country: string
+  city: string
+  street: string
+}
+
+export type ProviderTBankShopChiefExecutive = {
+  firstName: string
+  lastName: string
+  middleName: string | null
+  birthDate: string | null
+  phone: string
+  country: string
+  position: string | null
+}
+
+export type ProviderTBankShopSettlementProfile = {
+  bankName: string
+  bankAccount: string
+  correspondentAccount: string
+  bik: string
+  beneficiaryName: string | null
+  details: string
+}
+
+export type ProviderTBankShopResponse = {
+  shopId: string
+  providerId: string
+  shopCode: string | null
+  billingDescriptor: string
+  fullName: string | null
+  shortName: string
+  inn: string
+  kpp: string | null
+  ogrn: string | null
+  siteUrl: string | null
+  email: string
+  legalAddress: ProviderTBankShopLegalAddress
+  chiefExecutive: ProviderTBankShopChiefExecutive
+  settlementProfile: ProviderTBankShopSettlementProfile
+  createdAt: string
+  updatedAt: string
+}
+
+export type ProviderTBankShopBankAccountPatchRequest = {
+  bankAccount?: string | null
+  bankName?: string | null
+  bik?: string | null
+  correspondentAccount?: string | null
+  paymentDetails?: string | null
+}
+
+export type ProviderTBankShopCommandResponse = {
+  shop: ProviderTBankShopResponse
+  result?: {
+    status?: string
+    actionCode?: string
+    reasonCode?: string | null
+  }
+}
+
+export type SbpMemberResponse = {
+  sbpMemberId: string
+  displayBankName: string
+  bankName: string | null
+}
+
+export type SbpMemberOptionsResponse = {
+  source: string
+  items: SbpMemberResponse[]
 }
 
 export type PublicAddressSuggestion = {
@@ -582,7 +664,7 @@ function normalizeInternalListResponse<TItem>(response: TItem[] | { items: TItem
 
 async function parseError(response: Response) {
   try {
-    const errorBody = (await response.json()) as ApiErrorBody
+    const errorBody = keysToCamel<ApiErrorBody>(await response.json())
     return errorBody.message ?? errorBody.title ?? `Сервис вернул ${response.status}`
   } catch {
     return `Сервис вернул ${response.status}`
@@ -599,12 +681,23 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
     headers.set('Content-Type', 'application/json')
   }
 
+  // Call sites build camelCase bodies; the wire format is snake_case. Converting here keeps a single
+  // translation point instead of hand-editing every request literal.
+  const requestInit: RequestInit = { ...init }
+  if (typeof requestInit.body === 'string') {
+    try {
+      requestInit.body = JSON.stringify(keysToSnake(JSON.parse(requestInit.body)))
+    } catch {
+      // Not a JSON object literal — send it through unchanged.
+    }
+  }
+
   if (authorizationHeader) {
     headers.set('Authorization', authorizationHeader)
   }
 
   let response = await fetch(buildApiUrl(path), {
-    ...init,
+    ...requestInit,
     credentials: 'include',
     headers,
   })
@@ -614,17 +707,21 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
 
     headers.set('Authorization', `${refreshedTokens.tokenType || 'Bearer'} ${refreshedTokens.accessToken}`)
     response = await fetch(buildApiUrl(path), {
-      ...init,
+      ...requestInit,
       credentials: 'include',
       headers,
     })
   }
 
   if (!response.ok) {
-    throw new Error(await parseError(response))
+    const errorMessage = await parseError(response)
+    if (response.status === 404) {
+      throw new NotFoundError(errorMessage)
+    }
+    throw new Error(errorMessage)
   }
 
-  return (await response.json()) as TResponse
+  return keysToCamel<TResponse>(await response.json())
 }
 
 export function getProviderOnboarding(applicationId: string) {
@@ -828,6 +925,35 @@ export function postProviderPayoutTBankShopRegister(providerId: string, contract
       method: 'POST',
       body: JSON.stringify(request),
     },
+  )
+}
+
+export function getSbpMembers() {
+  return requestJson<SbpMemberOptionsResponse>('/api/v1/payment-reference/sbp-members')
+}
+
+export function getProviderTBankShop(providerId: string) {
+  return requestJson<ProviderTBankShopResponse>(`/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop`)
+}
+
+export function patchProviderTBankShopBankAccount(providerId: string, request: ProviderTBankShopBankAccountPatchRequest) {
+  return requestJson<ProviderTBankShopCommandResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop/bank-account`,
+    { method: 'PATCH', body: JSON.stringify(request) },
+  )
+}
+
+export function putProviderTBankShop(providerId: string, request: unknown) {
+  return requestJson<ProviderTBankShopResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop`,
+    { method: 'PUT', body: JSON.stringify(request) },
+  )
+}
+
+export function postProviderTBankShopRegister(providerId: string) {
+  return requestJson<ProviderTBankShopCommandResponse>(
+    `/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop/register`,
+    { method: 'POST' },
   )
 }
 

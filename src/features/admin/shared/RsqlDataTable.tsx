@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Filter, RotateCcw, Search, X } from 'l
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
+import { Select } from '../../../components/ui/select'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import type { PaginationResponse } from '../adminApi'
 
@@ -359,15 +360,12 @@ export function RsqlDataTable<TRow>({
       <footer className="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-2 text-sm text-muted-foreground">
         <span>Страница {safePage} из {totalPages}</span>
         <div className="flex items-center gap-2">
-          <select
-            className="h-8 rounded-sm border bg-card px-2 text-sm outline-none"
-            value={pageSize}
-            onChange={(event) => changePageSize(Number(event.target.value))}
-          >
-            {pageSizeOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
+          <Select
+            className="w-[76px]"
+            value={String(pageSize)}
+            onValueChange={(value) => changePageSize(Number(value))}
+            options={pageSizeOptions.map((option) => ({ value: String(option), label: String(option) }))}
+          />
           <Button type="button" variant="ghost" size="sm" disabled={loading || !hasPreviousPage} onClick={() => setPage((value) => Math.max(1, value - 1))}>
             Назад
           </Button>
@@ -396,12 +394,11 @@ export function RsqlDataTable<TRow>({
               <label className="grid gap-2">
                 <span className="text-sm font-medium">Фильтр</span>
                 {activeColumn.options?.length ? (
-                  <select className="h-8 rounded-sm border bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring" value={filterDraft} onChange={(event) => setFilterDraft(event.target.value)}>
-                    <option value="">Все</option>
-                    {activeColumn.options.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+                  <Select
+                    value={filterDraft}
+                    onValueChange={setFilterDraft}
+                    options={[{ value: '', label: 'Все' }, ...activeColumn.options.map((option) => ({ value: option, label: option }))]}
+                  />
                 ) : (
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -416,11 +413,15 @@ export function RsqlDataTable<TRow>({
               </label>
               <label className="grid gap-2">
                 <span className="text-sm font-medium">Сортировка</span>
-                <select className="h-8 rounded-sm border bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring" value={sortDraft} onChange={(event) => setSortDraft(event.target.value as SortDirection)}>
-                  <option value="">Без сортировки</option>
-                  <option value="asc">По возрастанию</option>
-                  <option value="desc">По убыванию</option>
-                </select>
+                <Select
+                  value={sortDraft}
+                  onValueChange={(value) => setSortDraft(value as SortDirection)}
+                  options={[
+                    { value: '', label: 'Без сортировки' },
+                    { value: 'asc', label: 'По возрастанию' },
+                    { value: 'desc', label: 'По убыванию' },
+                  ]}
+                />
               </label>
             </div>
             <footer className="flex items-center justify-end gap-2">

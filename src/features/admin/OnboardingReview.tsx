@@ -22,6 +22,8 @@ import {
 import { Badge, type BadgeProps } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Input, Textarea } from '../../components/ui/input'
+import { useNotifications } from '../../components/ui/notifications-context'
+import { Select } from '../../components/ui/select'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../components/ui/table'
 import type { OnboardingApplication, OnboardingViewMode, Severity } from '../../types/admin'
 import {
@@ -562,14 +564,19 @@ export function OnboardingReview({ viewMode, onViewModeChange, onOpenApplication
             <span className="truncate">
               Страница {pagination.page || 1} из {Math.max(pagination.totalPages, 1)} · всего {pagination.totalItems}
             </span>
-            <label className="flex h-8 items-center gap-2 border bg-card px-2 text-sm" title="Строк на странице">
+            <div className="flex h-8 items-center gap-2 text-sm" title="Строк на странице">
               <SlidersHorizontal size={ICON_SIZE} aria-hidden="true" />
-              <select className="bg-transparent text-sm outline-none" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </label>
+              <Select
+                className="w-[76px]"
+                value={String(pageSize)}
+                onValueChange={(value) => setPageSize(Number(value))}
+                options={[
+                  { value: '10', label: '10' },
+                  { value: '20', label: '20' },
+                  { value: '50', label: '50' },
+                ]}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -685,14 +692,13 @@ function ColumnFilterFlyout({
           <label className="grid gap-2">
             <span className="text-xs font-medium text-muted-foreground">Фильтр</span>
             {column.filterField?.values?.length ? (
-              <select className="h-8 rounded-sm border bg-card px-2 text-sm outline-none focus:ring-2 focus:ring-ring" value={filter} onChange={(event) => onFilterChange(event.target.value)} autoFocus disabled={!canFilterColumn(column)}>
-                <option value="">Все</option>
-                {column.filterField.values.map((value) => (
-                  <option value={value} key={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={filter}
+                onValueChange={onFilterChange}
+                autoFocus
+                disabled={!canFilterColumn(column)}
+                options={[{ value: '', label: 'Все' }, ...column.filterField.values.map((value) => ({ value, label: value }))]}
+              />
             ) : (
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
@@ -755,9 +761,8 @@ export function OnboardingApplicationPage({
   const [isLoading, setIsLoading] = useState(true)
   const [reasonCode, setReasonCode] = useState('')
   const [comments, setComments] = useState('')
-  const [actionError, setActionError] = useState('')
-  const [actionSuccess, setActionSuccess] = useState('')
   const [submittingAction, setSubmittingAction] = useState<ProviderOnboardingAction | null>(null)
+  const { notify } = useNotifications()
   const canReview = Boolean(application?.isApiBacked && GUID_PATTERN.test(application.id))
 
   const loadApplication = useCallback(async () => {
@@ -821,17 +826,15 @@ export function OnboardingApplicationPage({
     const normalizedComments = comments.trim()
 
     if (!canReview || !application) {
-      setActionError('Сначала откройте заявку для проверки')
+      notify({ tone: 'error', title: 'Сначала откройте заявку для проверки' })
       return
     }
 
     if (requiresReason && !normalizedReasonCode) {
-      setActionError('Для этого решения нужна причина')
+      notify({ tone: 'error', title: 'Для этого решения нужна причина' })
       return
     }
 
-    setActionError('')
-    setActionSuccess('')
     setSubmittingAction(action)
 
     try {
@@ -842,9 +845,9 @@ export function OnboardingApplicationPage({
       })
       const updatedApplication = mapOnboardingResponse(response.onboarding, application)
       setApplication(updatedApplication)
-      setActionSuccess(`Решение применено: ${response.result?.actionCode ?? action}`)
+      notify({ tone: 'success', title: 'Решение применено', description: response.result?.actionCode ?? action })
     } catch (error) {
-      setActionError(getErrorMessage(error, 'Не удалось применить решение'))
+      notify({ tone: 'error', title: 'Не удалось применить решение', description: getErrorMessage(error, 'Не удалось применить решение') })
     } finally {
       setSubmittingAction(null)
     }
@@ -882,7 +885,6 @@ export function OnboardingApplicationPage({
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 id="onboarding-title" className="text-xl font-semibold">{application.providerName}</h2>
-            <span className="block text-sm text-muted-foreground">{application.id}</span>
           </div>
           <Badge variant={getStatusBadgeVariant(application.status)}>{application.status}</Badge>
         </div>
@@ -902,6 +904,7 @@ export function OnboardingApplicationPage({
               <h3 className="mb-2 text-sm font-semibold">Заявитель</h3>
               <DetailFieldList
                 rows={[
+                  { label: 'ID заявки', value: application.id },
                   { label: 'Имя', value: quietValue(application.applicantName) },
                   { label: 'Почта', value: quietValue(application.applicantEmail) },
                   { label: 'Телефон', value: quietValue(application.contactPhone) },
@@ -970,8 +973,6 @@ export function OnboardingApplicationPage({
               <span className="text-sm font-medium">Комментарий</span>
               <Textarea value={comments} onChange={(event) => setComments(event.target.value)} disabled={!canReview} />
             </label>
-            {actionError ? <p className="text-sm font-medium text-destructive">{actionError}</p> : null}
-            {actionSuccess ? <p className="text-sm font-medium text-primary">{actionSuccess}</p> : null}
             <footer className="flex flex-wrap justify-end gap-2 pt-1">
               {REVIEW_ACTIONS.map((action) => (
                 <Button
