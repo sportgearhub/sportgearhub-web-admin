@@ -14,12 +14,17 @@ import {
   getProviderPayoutContractOptions,
   getProviderPayoutContracts,
   getProviderPayoutSetupDraft,
+  getProviderTBankShop,
+  getSbpMembers,
+  patchProviderTBankShopBankAccount,
   postPublicBankByBic,
   postPublicAddressSuggestions,
   postProviderPayoutContract,
   postProviderPayoutSbpRecipientRegister,
   postProviderPayoutTBankShopRegister,
+  postProviderTBankShopRegister,
   putProviderPayoutContract,
+  NotFoundError,
   type InternalProviderMembershipResponse,
   type PublicAddressSuggestion,
   type PublicBankByBicResponse,
@@ -30,6 +35,8 @@ import {
   type ProviderPayoutContractOptionsResponse,
   type ProviderPayoutSetupDraftResponse,
   type ProviderSbpPayout,
+  type ProviderTBankShopResponse,
+  type SbpMemberResponse,
   type ProviderGovernanceSummaryResponse,
   type ProviderProfileResponse,
 } from '../adminApi'
@@ -704,7 +711,41 @@ function PayoutContractFormPage({
   const [shopForm, setShopForm] = useState<ShopRegistrationFormState>(() => buildShopRegistrationForm(null, profile, form))
   const [activeTab, setActiveTab] = useState<PayoutContractTab>('contract')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [sbpMembers, setSbpMembers] = useState<SbpMemberResponse[]>([])
+  const sbpMembersFetchedRef = useRef(false)
+  const [tBankShop, setTBankShop] = useState<ProviderTBankShopResponse | null>(null)
+  const [tBankShopStatus, setTBankShopStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle')
+  const [bankAccountForm, setBankAccountForm] = useState<BankLookupFieldValues>({ account: '', bankName: '', bik: '', correspondentAccount: '', details: '' })
   const { notify } = useNotifications()
+
+  useEffect(() => {
+    if (form.payoutMode !== 't_bank_sbp_individual') return
+    if (sbpMembersFetchedRef.current) return
+    sbpMembersFetchedRef.current = true
+    getSbpMembers()
+      .then((response) => setSbpMembers(response.items))
+      .catch(() => {})
+  }, [form.payoutMode])
+
+  useEffect(() => {
+    if (activeTab !== 'registration' || form.payoutMode !== 't_bank_bank_account' || tBankShopStatus !== 'idle') return
+    setTBankShopStatus('loading')
+    getProviderTBankShop(providerId)
+      .then((shop) => {
+        setTBankShop(shop)
+        setBankAccountForm({
+          account: shop.settlementProfile.bankAccount,
+          bankName: shop.settlementProfile.bankName,
+          bik: shop.settlementProfile.bik,
+          correspondentAccount: shop.settlementProfile.correspondentAccount,
+          details: shop.settlementProfile.details,
+        })
+        setTBankShopStatus('found')
+      })
+      .catch((error) => {
+        setTBankShopStatus(error instanceof NotFoundError ? 'not_found' : 'error')
+      })
+  }, [activeTab, form.payoutMode, tBankShopStatus, providerId])
 
   function updateForm(partial: Partial<PayoutContractFormState>) {
     setForm((current) => ({ ...current, ...partial }))
@@ -791,6 +832,38 @@ function PayoutContractFormPage({
     }
   }
 
+  async function updateBankAccount() {
+    try {
+      setIsSubmitting(true)
+      const response = await patchProviderTBankShopBankAccount(providerId, {
+        bankAccount: bankAccountForm.account || undefined,
+        bankName: bankAccountForm.bankName || undefined,
+        bik: bankAccountForm.bik || undefined,
+        correspondentAccount: bankAccountForm.correspondentAccount || undefined,
+        paymentDetails: bankAccountForm.details || undefined,
+      })
+      setTBankShop(response.shop)
+      notify({ tone: 'success', title: 'Расчетный счет обновлен', description: response.result?.actionCode })
+    } catch (updateError) {
+      notify({ tone: 'error', title: 'Не удалось обновить расчетный счет', description: updateError instanceof Error ? updateError.message : undefined })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  async function registerTBankShopDirect() {
+    try {
+      setIsSubmitting(true)
+      const response = await postProviderTBankShopRegister(providerId)
+      setTBankShop(response.shop)
+      notify({ tone: 'success', title: 'T-Bank Shop зарегистрирован', description: response.result?.actionCode })
+    } catch (registerError) {
+      notify({ tone: 'error', title: 'Не удалось зарегистрировать T-Bank Shop', description: registerError instanceof Error ? registerError.message : undefined })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <section className="-mx-4 -mb-4 bg-card">
       <div className="border-b bg-card px-4 pt-0">
@@ -855,7 +928,17 @@ function PayoutContractFormPage({
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <Field className="sm:col-span-2" label="Получатель" value={form.sbpPayout.beneficiaryName} onChange={(value) => updateSbpPayout({ beneficiaryName: value })} />
                   <Field label="Телефон" value={form.sbpPayout.phone} onChange={(value) => updateSbpPayout({ phone: value })} />
-                  <Field label="Банк СБП" value={form.sbpPayout.sbpMemberId} onChange={(value) => updateSbpPayout({ sbpMemberId: value })} />
+                  <label className="grid gap-1 text-sm">
+                    <span className="font-medium">Банк СБП</span>
+                    <Select
+                      value={form.sbpPayout.sbpMemberId}
+                      onValueChange={(value) => {
+                        const member = sbpMembers.find((m) => m.sbpMemberId === value)
+                        updateSbpPayout({ sbpMemberId: value, displayBankName: member?.displayBankName ?? form.sbpPayout.displayBankName })
+                      }}
+                      options={sbpMembers.map((m) => ({ value: m.sbpMemberId, label: m.displayBankName }))}
+                    />
+                  </label>
                   <Field className="sm:col-span-2" label="Название банка" value={form.sbpPayout.displayBankName} onChange={(value) => updateSbpPayout({ displayBankName: value })} />
                 </div>
               </section>
@@ -868,11 +951,13 @@ function PayoutContractFormPage({
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h3 className="text-sm font-semibold">Регистрация</h3>
-                <p className="text-xs text-muted-foreground">Загрузите черновик настройки, затем зарегистрируйте выплатные реквизиты.</p>
+                <p className="text-xs text-muted-foreground">Зарегистрируйте выплатные реквизиты в T-Bank.</p>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => void loadSetupDraft()} disabled={isSubmitting || !contract}>
-                Загрузить черновик
-              </Button>
+              {(form.payoutMode === 't_bank_sbp_individual' || tBankShopStatus === 'not_found') ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => void loadSetupDraft()} disabled={isSubmitting || !contract}>
+                  Загрузить черновик
+                </Button>
+              ) : null}
             </div>
 
             {!contract ? <p className="text-sm text-muted-foreground">Сначала сохраните договор, затем откройте регистрацию.</p> : null}
@@ -881,14 +966,63 @@ function PayoutContractFormPage({
               <section className="grid max-w-3xl gap-3">
                 <Field label="Получатель" value={form.sbpPayout.beneficiaryName} onChange={(value) => updateSbpPayout({ beneficiaryName: value })} />
                 <Field label="Телефон" value={form.sbpPayout.phone} onChange={(value) => updateSbpPayout({ phone: value })} />
-                <Field label="Идентификатор банка СБП" value={form.sbpPayout.sbpMemberId} onChange={(value) => updateSbpPayout({ sbpMemberId: value })} />
+                <label className="grid gap-1 text-sm">
+                  <span className="font-medium">Банк СБП</span>
+                  <Select
+                    value={form.sbpPayout.sbpMemberId}
+                    onValueChange={(value) => {
+                      const member = sbpMembers.find((m) => m.sbpMemberId === value)
+                      updateSbpPayout({ sbpMemberId: value, displayBankName: member?.displayBankName ?? form.sbpPayout.displayBankName })
+                    }}
+                    options={sbpMembers.map((m) => ({ value: m.sbpMemberId, label: m.displayBankName }))}
+                  />
+                </label>
                 <Field label="Название банка" value={form.sbpPayout.displayBankName} onChange={(value) => updateSbpPayout({ displayBankName: value })} />
                 <Button type="button" className="justify-self-start" onClick={() => void registerSbpPayout()} disabled={isSubmitting || !contract}>
                   Зарегистрировать СБП-выплату
                 </Button>
               </section>
-            ) : (
+            ) : tBankShopStatus === 'idle' || tBankShopStatus === 'loading' ? (
+              <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                Загружаем магазин...
+              </span>
+            ) : tBankShopStatus === 'found' && tBankShop ? (
+              <section className="grid gap-4">
+                <section className="grid gap-2 rounded-sm bg-muted/30 p-3">
+                  <h4 className="text-sm font-semibold">T-Bank Shop</h4>
+                  <DetailFieldList
+                    rows={[
+                      { label: 'Код магазина', value: tBankShop.shopCode },
+                      { label: 'Дескриптор', value: tBankShop.billingDescriptor },
+                      { label: 'Наименование', value: tBankShop.shortName },
+                      { label: 'ИНН', value: tBankShop.inn },
+                      { label: 'КПП', value: tBankShop.kpp },
+                      { label: 'ОГРН', value: tBankShop.ogrn },
+                    ]}
+                  />
+                </section>
+                <section className="grid gap-3 rounded-sm bg-muted/30 p-3">
+                  <h4 className="text-sm font-semibold">Расчетный счет</h4>
+                  <BankLookupFields
+                    showDetails
+                    values={bankAccountForm}
+                    onChange={(partial) => setBankAccountForm((prev) => ({ ...prev, ...partial }))}
+                  />
+                  <Button type="button" className="justify-self-start" onClick={() => void updateBankAccount()} disabled={isSubmitting}>
+                    Обновить расчетный счет
+                  </Button>
+                </section>
+              </section>
+            ) : tBankShopStatus === 'not_found' ? (
               <ShopRegistrationFields form={shopForm} onChange={setShopForm} onRegister={() => void registerTBankShop()} disabled={isSubmitting || !contract} />
+            ) : (
+              <div className="grid gap-2">
+                <p className="text-sm text-destructive">Не удалось загрузить данные магазина.</p>
+                <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => setTBankShopStatus('idle')} disabled={isSubmitting}>
+                  Повторить
+                </Button>
+              </div>
             )}
           </section>
         ) : null}

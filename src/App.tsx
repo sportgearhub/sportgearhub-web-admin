@@ -9,11 +9,16 @@ import { OnboardingApplicationPage, OnboardingReview } from './features/admin/On
 import { ProviderDetailPage } from './features/admin/providers/ProviderDetailPage'
 import { ProviderManagementPage } from './features/admin/providers/ProviderManagementPage'
 import { UserManagementPage } from './features/admin/users/UserManagementPage'
-import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage'
-import { ResetPasswordPage } from './features/auth/ResetPasswordPage'
 import { SignInPage } from './features/auth/SignInPage'
 import { VerifyEmailPage } from './features/auth/VerifyEmailPage'
-import { restoreCurrentSession, signInWithPassword, signOutCurrentUser } from './features/auth/authApi'
+import {
+  enrolTrustedDevice,
+  requestSignInCode,
+  restoreCurrentSession,
+  signInWithCode,
+  signInWithPasscode,
+  signOutCurrentUser,
+} from './features/auth/authApi'
 import { clearStoredAuthTokens } from './features/auth/authTokenStore'
 import { ConsoleShell } from './layout/ConsoleShell'
 import type { AdminSectionId, AdminSession, ConsoleAction, OnboardingViewMode } from './types/admin'
@@ -22,8 +27,6 @@ const CONSOLE_PATH = '/console'
 const ONBOARDING_PATH = '/console/onboarding'
 const ONBOARDING_APPLICATIONS_PATH = '/console/onboarding/applications'
 const PROVIDERS_PATH = '/console/providers'
-const FORGOT_PASSWORD_PATH = '/auth/forgot-password'
-const RESET_PASSWORD_PATH = '/auth/reset-password'
 const SIGN_IN_PATH = '/sign-in'
 const VERIFY_EMAIL_PATH = '/auth/verify-email'
 const LOCATION_CHANGE_EVENT = 'sportgearhub-location-change'
@@ -107,7 +110,7 @@ function isSignInPath(path: string) {
 function isAuthPath(path: string) {
   const normalizedPath = path.replace(/\/+$/, '') || '/'
 
-  return isSignInPath(normalizedPath) || normalizedPath === FORGOT_PASSWORD_PATH || normalizedPath === RESET_PASSWORD_PATH || normalizedPath === VERIFY_EMAIL_PATH
+  return isSignInPath(normalizedPath) || normalizedPath === VERIFY_EMAIL_PATH
 }
 
 function App() {
@@ -146,11 +149,6 @@ function App() {
   const normalizedPath = currentPath.replace(/\/+$/, '') || '/'
   const currentProviderId = useMemo(() => getProviderIdFromPath(normalizedPath), [normalizedPath])
   const currentProviderPayoutContractId = useMemo(() => getProviderPayoutContractIdFromPath(normalizedPath), [normalizedPath])
-
-  const goToForgotPassword = useCallback(() => {
-    clearAdminState()
-    navigateTo(FORGOT_PASSWORD_PATH)
-  }, [clearAdminState, navigateTo])
 
   const goToConsole = useCallback(() => {
     navigateTo(CONSOLE_PATH)
@@ -322,23 +320,29 @@ function App() {
     setPendingAction(null)
   }
 
-  async function signIn(email: string, password: string) {
-    const session = await signInWithPassword(email.toLowerCase(), password)
-    setActiveSession(session)
+  function requestCode(email: string) {
+    return requestSignInCode(email.toLowerCase())
+  }
+
+  // The session starts here; the console opens only after the optional passcode enrolment step, so the
+  // admin is not dropped into the shell mid-flow.
+  async function submitCode(email: string, code: string) {
+    setActiveSession(await signInWithCode(email.toLowerCase(), code))
+  }
+
+  async function submitPasscode(passcode: string) {
+    setActiveSession(await signInWithPasscode(passcode))
+    goToConsole()
+  }
+
+  async function enrolDevice(passcode: string) {
+    await enrolTrustedDevice(passcode, navigator.userAgent.slice(0, 100))
     goToConsole()
   }
 
   async function signOut() {
     await signOutCurrentUser().catch(() => undefined)
     resetToSignIn()
-  }
-
-  if (normalizedPath === FORGOT_PASSWORD_PATH) {
-    return <ForgotPasswordPage onBackToSignIn={resetToSignIn} />
-  }
-
-  if (normalizedPath === RESET_PASSWORD_PATH) {
-    return <ResetPasswordPage token={resetToken} onBackToSignIn={resetToSignIn} />
   }
 
   if (normalizedPath === VERIFY_EMAIL_PATH) {
@@ -369,7 +373,14 @@ function App() {
   }
 
   if (!activeSession || isSignInPath(normalizedPath)) {
-    return <SignInPage onSignIn={signIn} onForgotPassword={goToForgotPassword} />
+    return (
+      <SignInPage
+        onRequestCode={requestCode}
+        onSubmitCode={submitCode}
+        onSubmitPasscode={submitPasscode}
+        onEnrolDevice={enrolDevice}
+      />
+    )
   }
 
   return (
@@ -425,7 +436,7 @@ function App() {
           ) : activeSection === 'users' ? (
             <UserManagementPage />
           ) : activeSection === 'canonicalization' ? (
-            <EquipmentTaxonomyReview />
+            <EquipmentTaxonomyReview onTopBarContentChange={setTopBarContent} />
           ) : (
             <DomainPanel actions={visibleActions} onAction={requestActionConsent} />
           )}

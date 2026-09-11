@@ -1,4 +1,5 @@
 import type { AdminOidcTokens, AdminSession } from '../../types/admin'
+import { keysToCamel, keysToSnake } from '../../lib/case-convert'
 import { clearStoredAuthTokens, getStoredAuthTokens, storeAuthTokens } from './authTokenStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
@@ -30,8 +31,64 @@ type AuthUserResponse = {
   surname?: string | null
   email?: string | null
   emailVerified?: boolean
-  mustChangePassword?: boolean
   roles?: string[]
+}
+
+type SimpleTokenResponse = {
+  status: 'authenticated' | 'registration_required'
+  accessToken: string
+  refreshToken: string
+  registrationToken?: string | null
+}
+
+export type PasscodePolicy = {
+  length: number
+  maxAttempts: number
+  maxDevicesPerUser: number
+}
+
+type TrustedDeviceEnrolment = {
+  deviceId: string
+  // 256 bits of server-generated entropy, shown exactly once. This — not the short passcode — is what
+  // makes the credential strong, so it stays in this browser and is never sent anywhere else.
+  deviceSecret: string
+  name: string
+  platform: string
+}
+
+const DEVICE_STORAGE_KEY = 'sportgearhub.admin.device'
+
+function storeDevice(device: TrustedDeviceEnrolment) {
+  try {
+    window.localStorage.setItem(
+      DEVICE_STORAGE_KEY,
+      JSON.stringify({ deviceId: device.deviceId, deviceSecret: device.deviceSecret }),
+    )
+  } catch {
+    // Without storage the device cannot be remembered; sign-in falls back to an emailed code.
+  }
+}
+
+function loadStoredDevice(): { deviceId: string; deviceSecret: string } | null {
+  try {
+    const raw = window.localStorage.getItem(DEVICE_STORAGE_KEY)
+    if (!raw) return null
+
+    const device = JSON.parse(raw) as Partial<{ deviceId: string; deviceSecret: string }>
+    return device.deviceId && device.deviceSecret
+      ? { deviceId: device.deviceId, deviceSecret: device.deviceSecret }
+      : null
+  } catch {
+    return null
+  }
+}
+
+function clearStoredDevice() {
+  try {
+    window.localStorage.removeItem(DEVICE_STORAGE_KEY)
+  } catch {
+    // Nothing to clear if storage is unavailable.
+  }
 }
 
 function buildApiUrl(path: string) {
@@ -154,7 +211,7 @@ function mapSessionFromTokens(tokens: AdminOidcTokens): AdminSession {
 
 async function parseError(response: Response) {
   try {
-    const errorBody = (await response.json()) as ApiErrorBody
+    const errorBody = keysToCamel<ApiErrorBody>(await response.json())
     return errorBody.error_description ?? errorBody.message ?? errorBody.title ?? errorBody.error ?? 'Не удалось выполнить запрос'
   } catch {
     return 'Не удалось выполнить запрос'
@@ -171,12 +228,23 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
     headers.set('Content-Type', 'application/json')
   }
 
+  // Call sites build camelCase bodies; the wire format is snake_case. Converting here keeps a single
+  // translation point instead of hand-editing every request literal.
+  const requestInit: RequestInit = { ...init }
+  if (typeof requestInit.body === 'string') {
+    try {
+      requestInit.body = JSON.stringify(keysToSnake(JSON.parse(requestInit.body)))
+    } catch {
+      // Not a JSON object literal — send it through unchanged.
+    }
+  }
+
   if (authorizationHeader) {
     headers.set('Authorization', authorizationHeader)
   }
 
   let response = await fetch(buildApiUrl(path), {
-    ...init,
+    ...requestInit,
     credentials: 'include',
     headers,
   })
@@ -186,7 +254,7 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
 
     headers.set('Authorization', `${refreshedTokens.tokenType || 'Bearer'} ${refreshedTokens.accessToken}`)
     response = await fetch(buildApiUrl(path), {
-      ...init,
+      ...requestInit,
       credentials: 'include',
       headers,
     })
@@ -200,33 +268,7 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
     return undefined as TResponse
   }
 
-  return (await response.json()) as TResponse
-}
-
-async function requestOidcTokens(email: string, password: string) {
-  const body = new URLSearchParams()
-
-  body.set('grant_type', 'password')
-  body.set('client_id', OIDC_CLIENT_ID)
-  body.set('username', email)
-  body.set('password', password)
-  body.set('scope', OIDC_SCOPE)
-
-  const response = await fetch(buildApiUrl('/api/v1/auth/login'), {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
-  })
-
-  if (!response.ok) {
-    throw new Error(await parseError(response))
-  }
-
-  return (await response.json()) as OidcTokenResponse
+  return keysToCamel<TResponse>(await response.json())
 }
 
 async function requestOidcTokenRefresh(refreshToken: string) {
@@ -305,16 +347,104 @@ async function postJson(path: string, body: Record<string, string>) {
   })
 }
 
-export async function signInWithPassword(email: string, password: string) {
+// There are no passwords. Step 1: mail a one-time code to the address.
+export function requestSignInCode(email: string) {
+  return postJson('/api/v1/auth/email/start', {
+    email,
+    app: ADMIN_APP,
+    deliveryMode: 'code',
+  })
+}
+
+// Step 2: exchange the code for a session.
+export async function signInWithCode(email: string, code: string) {
   clearStoredAuthTokens()
-  const tokenResponse = await requestOidcTokens(email, password)
-  const tokens = storeAuthTokens(mapTokenResponse(tokenResponse))
+  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/email/verify-code', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  })
+
+  if (result.status === 'registration_required') {
+    throw new Error('Учетная запись администратора не найдена.')
+  }
+
+  return adoptSimpleToken(result)
+}
+
+// Passcode sign-in on a browser the admin has trusted. The request names no user — the account comes
+// from the stored device credential, so a short passcode cannot be sprayed at a leaked address list.
+export async function signInWithPasscode(passcode: string) {
+  const device = loadStoredDevice()
+
+  if (!device) {
+    throw new Error('Это устройство не доверено.')
+  }
+
+  clearStoredAuthTokens()
+
+  try {
+    const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/passcode/sign-in', {
+      method: 'POST',
+      body: JSON.stringify({
+        deviceId: device.deviceId,
+        deviceSecret: device.deviceSecret,
+        passcode,
+        clientId: OIDC_CLIENT_ID,
+      }),
+    })
+    return await adoptSimpleToken(result)
+  } catch (error) {
+    // A revoked or forgotten device can never be used again: drop the local secret so the UI falls
+    // back to an emailed code.
+    const message = error instanceof Error ? error.message : ''
+    if (message.includes('не доверено') || message.includes('отозвано')) {
+      clearStoredDevice()
+    }
+    throw error
+  }
+}
+
+export function getPasscodePolicy() {
+  return requestJson<PasscodePolicy>('/api/v1/auth/passcode/policy')
+}
+
+export async function enrolTrustedDevice(passcode: string, name: string) {
+  const device = await requestJson<TrustedDeviceEnrolment>('/api/v1/auth/devices', {
+    method: 'POST',
+    body: JSON.stringify({ clientId: OIDC_CLIENT_ID, platform: 'web', name, passcode }),
+  })
+  storeDevice(device)
+  return device
+}
+
+export function hasTrustedDevice() {
+  return loadStoredDevice() !== null
+}
+
+export function forgetLocalDevice() {
+  clearStoredDevice()
+}
+
+async function adoptSimpleToken(result: SimpleTokenResponse) {
+  const tokens = storeAuthTokens(mapTokenResponse({
+    access_token: result.accessToken,
+    token_type: 'Bearer',
+    expires_in: accessTokenLifetimeSeconds(result.accessToken),
+    refresh_token: result.refreshToken,
+    scope: OIDC_SCOPE,
+  }))
 
   try {
     return await getCurrentUser()
   } catch {
     return mapSessionFromTokens(tokens)
   }
+}
+
+function accessTokenLifetimeSeconds(accessToken: string) {
+  const claims = decodeJwtClaims(accessToken)
+  const exp = claims && typeof claims.exp === 'number' ? claims.exp : null
+  return exp ? Math.max(0, exp - Math.floor(Date.now() / 1000)) : 3600
 }
 
 export async function restoreCurrentSession() {
@@ -346,20 +476,6 @@ export async function signOutCurrentUser() {
   } finally {
     clearStoredAuthTokens()
   }
-}
-
-export function requestPasswordReset(email: string) {
-  return postJson('/api/v1/auth/password/forgot', {
-    email,
-    app: ADMIN_APP,
-  })
-}
-
-export function resetPassword(token: string, password: string) {
-  return postJson('/api/v1/auth/password/reset', {
-    token,
-    newPassword: password,
-  })
 }
 
 export function requestEmailVerification(email: string) {

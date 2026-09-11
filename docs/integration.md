@@ -63,6 +63,40 @@ Expected client:
 - callback such as `http://localhost:3001/auth/callback`
 - scopes: `openid profile email offline_access internal_api`
 
+### Wire format
+
+Request and response bodies are **snake_case** in both directions (`{"user_id": "...", "access_token": "..."}`).
+Case matching relaxes letter case only, not the separator, so camelCase keys do not bind. This app converts
+once at the HTTP boundary in `src/lib/case-convert.ts` and stays camelCase internally; the fields listed in
+`DATA_KEYED_MAP_FIELDS` there hold maps keyed by data (locale codes, status codes) and pass through untouched.
+
+### Passwords are gone
+
+There are none. `/api/v1/auth/login` accepts only `authorization_code` and `refresh_token`; the
+forgot/reset endpoints no longer exist. Admin sign-in is:
+
+```http
+POST /api/v1/auth/email/start        # { email, app: "admin", delivery_mode: "code" }
+POST /api/v1/auth/email/verify-code  # { email, code } -> tokens
+```
+
+An admin who has trusted this browser can unlock with a passcode instead:
+
+```http
+GET    /api/v1/auth/passcode/policy  # { length, max_attempts, max_devices_per_user }
+POST   /api/v1/auth/devices          # { client_id, platform, name, passcode } -> { device_id, device_secret }
+GET    /api/v1/auth/devices
+POST   /api/v1/auth/devices/passcode # { device_id, device_secret, current_passcode, new_passcode }
+DELETE /api/v1/auth/devices/{deviceId}
+POST   /api/v1/auth/passcode/sign-in # { device_id, device_secret, passcode, client_id } -> tokens
+```
+
+`device_secret` is 256 bits returned **once** at enrolment; it stays in this browser. The sign-in request
+carries no email or user id on purpose — the account comes from the device row, which is what stops a short
+passcode from being sprayed at a leaked address list. Five wrong passcodes revoke the device permanently
+(never the account); on `auth.device_not_trusted` or `auth.passcode_locked`, drop the local secret and fall
+back to an emailed code. Never validate the passcode client-side — that hands back the attempt counter.
+
 ## Admin User Bootstrap
 
 The first admin user is initialized by the backend from configuration.
@@ -74,6 +108,9 @@ Backend responsibility:
 - assign `Admin` role
 - optionally bind the configured external auth provider and external id
 - keep this role assignment out of frontend control
+
+`AdminBootstrap` no longer carries a password: the bootstrap admin signs in with a one-time code to the
+configured address, or through the configured external provider.
 
 Web responsibility:
 
@@ -220,6 +257,83 @@ Governance action request:
   "comments": null
 }
 ```
+
+## 4. Provider Payout Contracts
+
+Use:
+
+- `GET /internal/provider-payout-contracts/options`
+- `GET /internal/providers/{providerId}/payout-contracts`
+- `POST /internal/providers/{providerId}/payout-contracts`
+- `PUT /internal/providers/{providerId}/payout-contracts/{contractId}`
+- `GET /internal/providers/{providerId}/payout-contracts/{contractId}/setup-draft`
+- `POST /internal/providers/{providerId}/payout-contracts/{contractId}/t-bank/sbp-recipient/register`
+- `POST /internal/providers/{providerId}/payout-contracts/{contractId}/t-bank/shop/register`
+
+The options endpoint drives payout mode dropdowns, status badges, filters, and setup action buttons:
+
+```json
+{
+  "payoutModes": [
+    {
+      "key": "t_bank_bank_account",
+      "value": "Bank requisites payout for company or sole proprietor"
+    },
+    {
+      "key": "t_bank_sbp_individual",
+      "value": "SBP payout for self-employed individual"
+    }
+  ],
+  "statuses": [
+    {
+      "key": "review",
+      "value": "Admin must review or complete payout setup data"
+    },
+    {
+      "key": "setting_up",
+      "value": "Admin is registering payout details in T-Bank"
+    },
+    {
+      "key": "active",
+      "value": "Payout target is registered and routeable"
+    },
+    {
+      "key": "rejected",
+      "value": "Payout setup cannot be accepted in the current form"
+    },
+    {
+      "key": "blocked",
+      "value": "Payout contract is administratively blocked"
+    }
+  ],
+  "setupActions": [
+    {
+      "key": "register_sbp_payout",
+      "value": "Use for t_bank_sbp_individual"
+    },
+    {
+      "key": "register_bank_requisites_payout",
+      "value": "Use for t_bank_bank_account"
+    }
+  ]
+}
+```
+
+Status meaning:
+
+- `review`: default after onboarding approval or manual contract edits.
+- `setting_up`: operator is registering payout details in T-Bank.
+- `active`: setup succeeded and the payout target is usable.
+- `rejected`: corrected requisites are needed before setup can continue.
+- `blocked`: platform-side stop; do not route payouts.
+
+UI flow:
+
+- show the provider payout contract list on provider detail
+- use `setup-draft` to prefill the SBP or bank requisites registration form
+- for `t_bank_sbp_individual`, submit the SBP registration action
+- for `t_bank_bank_account`, submit the T-Bank shop registration action
+- after success, refresh payout contracts and provider governance settlement status
 
 Supported actions:
 
