@@ -22,7 +22,6 @@ import {
   postProviderPayoutContract,
   postProviderPayoutSbpRecipientRegister,
   postProviderPayoutTBankShopRegister,
-  postProviderTBankShopRegister,
   putProviderPayoutContract,
   NotFoundError,
   type InternalProviderMembershipResponse,
@@ -846,19 +845,6 @@ function PayoutContractFormPage({
       notify({ tone: 'success', title: 'Расчетный счет обновлен', description: response.result?.actionCode })
     } catch (updateError) {
       notify({ tone: 'error', title: 'Не удалось обновить расчетный счет', description: updateError instanceof Error ? updateError.message : undefined })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function registerTBankShopDirect() {
-    try {
-      setIsSubmitting(true)
-      const response = await postProviderTBankShopRegister(providerId)
-      setTBankShop(response.shop)
-      notify({ tone: 'success', title: 'T-Bank Shop зарегистрирован', description: response.result?.actionCode })
-    } catch (registerError) {
-      notify({ tone: 'error', title: 'Не удалось зарегистрировать T-Bank Shop', description: registerError instanceof Error ? registerError.message : undefined })
     } finally {
       setIsSubmitting(false)
     }
