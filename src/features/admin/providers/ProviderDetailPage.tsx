@@ -229,6 +229,38 @@ function readString(source: unknown, key: string) {
   return typeof value === 'string' ? value : ''
 }
 
+/**
+ * The payment purpose T-Bank puts on each payout, in the wording their spec requires.
+ *
+ * `${date}`, `${rub}` and `${kop}` are T-Bank's own placeholders — they substitute the register
+ * date and the commission at payout time — so they must survive verbatim into the string we send.
+ * Note this is deliberately not a template literal: backticks would make JavaScript try to
+ * interpolate them here and produce an empty purpose line.
+ *
+ * The API builds the same sentence for the suggested draft (BuildPaymentDetails); this mirrors it
+ * for the case where no draft came back, so the two cannot drift.
+ */
+function buildPaymentDetails(contractNumber: number | null, startsOn: string) {
+  const number = contractNumber ?? ''
+  const date = formatContractDate(startsOn)
+
+  return 'Перевод средств по договору № ' + number + ' от ' + date
+    + ' по Реестру Операций от ${date}. Сумма комиссии ${rub} руб. ${kop} коп.'
+}
+
+/** dd.MM.yyyy, matching the API's formatting of the same field. */
+function formatContractDate(startsOn: string) {
+  const parsed = new Date(startsOn)
+
+  if (Number.isNaN(parsed.getTime())) {
+    return startsOn
+  }
+
+  const day = String(parsed.getDate()).padStart(2, '0')
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  return `${day}.${month}.${parsed.getFullYear()}`
+}
+
 function buildShopRegistrationForm(draft: ProviderPayoutSetupDraftResponse | null, profile: ProviderProfileResponse, form: PayoutContractFormState): ShopRegistrationFormState {
   const suggested = draft?.suggestedBankRequisitesRegistration
   const legalProfile = suggested && typeof suggested === 'object' ? (suggested as { legalProfile?: unknown }).legalProfile : null
@@ -243,7 +275,7 @@ function buildShopRegistrationForm(draft: ProviderPayoutSetupDraftResponse | nul
     taxpayerNumber: readString(legalProfile, 'taxpayerNumber') || profile.taxNumber || '',
     branchNumber: readString(legalProfile, 'branchNumber') || profile.branchNumber || '',
     registrationNumber: readString(legalProfile, 'registrationNumber') || profile.registrationNumber || '',
-    registeredAddress: readString(legalProfile, 'registeredAddress') || profile.registeredAddress || '',
+    registeredAddress: readString(legalProfile, 'registeredAddress') || profile.address || '',
     email: readString(contactProfile, 'email') || profile.contactEmail || '',
     phone: readString(contactProfile, 'phone') || profile.contactPhone || '',
     billingDescriptor: readString(businessProfile, 'billingDescriptor') || profile.displayName.slice(0, 14).toUpperCase(),
@@ -261,7 +293,7 @@ function buildShopRegistrationForm(draft: ProviderPayoutSetupDraftResponse | nul
     bankAccount: readString(settlementProfile, 'bankAccount') || form.bankRequisites.account,
     correspondentAccount: readString(settlementProfile, 'correspondentAccount') || form.bankRequisites.correspondentAccount,
     bik: readString(settlementProfile, 'bik') || form.bankRequisites.bik,
-    details: readString(settlementProfile, 'details') || `Возмещение по договору ${profile.displayName}`,
+    details: readString(settlementProfile, 'details') || buildPaymentDetails(form.contractNumber, form.startsOn),
   }
 }
 
