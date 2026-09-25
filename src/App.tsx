@@ -96,7 +96,9 @@ function App() {
 
   // A signed-in admin on /sign-in or an unknown path lands in the console.
   useEffect(() => {
-    if (session?.isAdmin && !path.startsWith(CONSOLE_PATH)) navigateTo(CONSOLE_PATH)
+    if (!session?.isAdmin || path.startsWith(CONSOLE_PATH)) return
+    const timer = window.setTimeout(() => navigateTo(CONSOLE_PATH), 0)
+    return () => window.clearTimeout(timer)
   }, [session, path, navigateTo])
 
   const enterConsole = useCallback(() => {
