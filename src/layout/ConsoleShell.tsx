@@ -115,7 +115,7 @@ export function ConsoleShell({
           <div className="flex min-w-0 items-center gap-3">
             <div className="hidden min-w-0 text-right sm:block">
               <div className="truncate text-xs text-muted-foreground">{operator.name}</div>
-              <strong className="block truncate text-sm font-medium">{operator.email}</strong>
+              <strong className="block truncate text-sm font-medium">{operator.phone || operator.email}</strong>
             </div>
             <Button type="button" variant="ghost" size="icon" onClick={onSignOut} aria-label="Выйти" title="Выйти">
               <LogOut size={16} />

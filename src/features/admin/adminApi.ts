@@ -16,74 +16,6 @@ export class NotFoundError extends Error {
   }
 }
 
-export type ProviderOnboardingChecklistStatus = 0 | 1
-
-export type ProviderOnboardingResponse = {
-  applicationId?: string | null
-  providerId?: string | null
-  status: string
-  checklist?: {
-    profile?: ProviderOnboardingChecklistStatus
-    legal?: ProviderOnboardingChecklistStatus
-  } | null
-  draft?: {
-    displayName?: string | null
-    legalName?: string | null
-    legalCountryCode?: string | null
-    legalForm?: string | null
-    taxNumber?: string | null
-    registrationNumber?: string | null
-    branchNumber?: string | null
-    registeredAddress?: string | null
-    contactEmail?: string | null
-    contactPhone?: string | null
-    cityId?: string | null
-    address?: string | null
-    description?: string | null
-  } | null
-  updatedAt: string
-}
-
-export type ProviderOnboardingSummaryResponse = {
-  applicationId: string
-  applicantUserId?: string | null
-  providerId?: string | null
-  status: string
-  displayName?: string | null
-  legalName?: string | null
-  legalCountryCode?: string | null
-  legalForm?: string | null
-  taxNumber?: string | null
-  contactEmail?: string | null
-  submittedAt?: string | null
-  updatedAt: string
-}
-
-export type ProviderOnboardingFilterFieldResponse = {
-  name: string
-  type: string
-  operators: string[]
-  values?: string[] | null
-}
-
-export type ProviderOnboardingSortFieldResponse = {
-  name: string
-  type: string
-}
-
-export type ProviderOnboardingFilterExampleResponse = {
-  label: string
-  filter: string
-}
-
-export type ProviderOnboardingListOptionsResponse = {
-  filterFields: ProviderOnboardingFilterFieldResponse[]
-  sortFields: ProviderOnboardingSortFieldResponse[]
-  filterExamples: ProviderOnboardingFilterExampleResponse[]
-  sortExamples: string[]
-  defaultFilter: string
-  defaultSort: string
-}
 
 export type PaginationResponse = {
   page: number
@@ -94,17 +26,6 @@ export type PaginationResponse = {
   hasNextPage: boolean
 }
 
-export type ProviderOnboardingQueueResponse = {
-  items: ProviderOnboardingSummaryResponse[]
-  pagination: PaginationResponse
-}
-
-export type ProviderOnboardingQueueQuery = {
-  filter?: string
-  sort?: string
-  page: number
-  pageSize: number
-}
 
 export type InternalListQuery = {
   filter?: string
@@ -144,22 +65,6 @@ export type InternalListOptionsResponse = {
   }
 }
 
-export type ProviderOnboardingAction = 'approve' | 'request_changes' | 'reject'
-
-type ProviderOnboardingActionRequest = {
-  action: ProviderOnboardingAction
-  reasonCode: string | null
-  comments: string | null
-}
-
-type ProviderOnboardingActionResponse = {
-  onboarding: ProviderOnboardingResponse
-  result?: {
-    status?: string
-    actionCode?: string
-    reasonCode?: string | null
-  }
-}
 
 export type EquipmentCategoryResponse = {
   categoryId: string
@@ -323,24 +228,6 @@ export type InternalUserSummaryResponse = {
   updatedAt: string
 }
 
-export type InternalUserRoleResponse = {
-  userRoleId: string
-  userId: string
-  role: string
-  createdAt: string
-  updatedAt: string
-}
-
-export type InternalExternalAuthProviderResponse = {
-  externalAuthProviderId: string
-  userId: string
-  provider: string
-  externalId: string
-  hasExternalToken: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 export type InternalProviderMembershipResponse = {
   providerMembershipId: string
   userId: string
@@ -351,8 +238,6 @@ export type InternalProviderMembershipResponse = {
 }
 
 export type InternalUserDetailResponse = InternalUserSummaryResponse & {
-  roles: InternalUserRoleResponse[]
-  externalAuthProviders: InternalExternalAuthProviderResponse[]
   providerMemberships: InternalProviderMembershipResponse[]
 }
 
@@ -363,256 +248,6 @@ export type InternalUsersListResponse = {
 
 export type InternalUserManagementOptionsResponse = InternalListOptionsResponse
 
-export type ProviderGovernanceDiagnosticsResponse = {
-  hasProfileContact: boolean
-  activeResources: number
-  totalResources: number
-  activeOffers: number
-  totalOffers: number
-  acquiringConnectionId?: string | null
-  acquiringStatus?: string | null
-  activeRoutes: number
-  activeBindings: number
-  acquiringOnboardingStatus?: string | null
-}
-
-export type ProviderGovernanceSummaryResponse = {
-  providerId: string
-  displayName: string
-  overallStatus: string
-  capabilityStatus: string
-  settlementStatus: string
-  governanceStatus: string
-  diagnostics: ProviderGovernanceDiagnosticsResponse
-  updatedAt: string
-}
-
-export type ProviderProfileResponse = {
-  providerId: string
-  displayName: string
-  legalName?: string | null
-  legalCountryCode?: string | null
-  legalForm?: string | null
-  taxNumber?: string | null
-  registrationNumber?: string | null
-  branchNumber?: string | null
-  registeredAddress?: string | null
-  contactEmail?: string | null
-  contactPhone?: string | null
-  cityId?: string | null
-  address?: string | null
-  description?: string | null
-  operatingState: string
-  operatingSummary?: Array<{
-    value?: string | null
-    label?: string | null
-  }> | null
-  profileMetadata?: {
-    governance?: {
-      operatingState?: string | null
-    } | null
-    reviewReasonCode?: string | null
-    reviewMessage?: string | null
-    reviewActorUserId?: string | null
-  } | null
-  updatedAt: string
-}
-
-export type ProviderPayoutMode = 't_bank_bank_account' | 't_bank_sbp_individual' | string
-
-export type ProviderPayoutBankRequisites = {
-  account?: string | null
-  bankName?: string | null
-  bik?: string | null
-  correspondentAccount?: string | null
-}
-
-export type ProviderSbpPayout = {
-  beneficiaryName?: string | null
-  phone?: string | null
-  sbpMemberId?: string | null
-  displayBankName?: string | null
-}
-
-export type ProviderPayoutContractResponse = {
-  contractId: string
-  providerId: string
-  payoutMode: ProviderPayoutMode
-  contractNumber: number
-  currency: string
-  startsOn: string
-  status: string
-  bankRequisites?: ProviderPayoutBankRequisites | null
-  sbpPayout?: ProviderSbpPayout | null
-  tBankSbpPayoutRecipient?: unknown
-  tBankShop?: ProviderTBankShopResponse | null
-  createdAt: string
-  updatedAt: string
-}
-
-export type ProviderPayoutContractRequest = {
-  payoutMode: ProviderPayoutMode
-  currency: string
-  startsOn: string
-  status: string
-  bankRequisites?: ProviderPayoutBankRequisites | null
-  sbpPayout?: ProviderSbpPayout | null
-}
-
-export type ProviderPayoutCommandResponse = {
-  contract: ProviderPayoutContractResponse
-  connection?: unknown
-  result?: {
-    status?: string
-    actionCode?: string
-    reasonCode?: string | null
-  }
-}
-
-export type ProviderPayoutSetupDraftResponse = {
-  providerId: string
-  contractId: string
-  payoutMode: ProviderPayoutMode
-  contract: ProviderPayoutContractResponse
-  suggestedSbpPayout?: ProviderSbpPayout | null
-  suggestedBankRequisitesRegistration?: unknown
-}
-
-export type ProviderPayoutContractOptionsResponse = {
-  payoutModes: Array<{
-    key: string
-    value: string
-  }>
-  statuses: Array<{
-    key: string
-    value: string
-  }>
-  setupActions: Array<{
-    key: string
-    value: string
-  }>
-}
-
-export type ProviderTBankShopLegalAddress = {
-  type: string
-  zip: string
-  country: string
-  city: string
-  street: string
-}
-
-export type ProviderTBankShopChiefExecutive = {
-  firstName: string
-  lastName: string
-  middleName: string | null
-  birthDate: string | null
-  phone: string
-  country: string
-  position: string | null
-}
-
-export type ProviderTBankShopSettlementProfile = {
-  bankName: string
-  bankAccount: string
-  correspondentAccount: string
-  bik: string
-  beneficiaryName: string | null
-  details: string
-}
-
-export type ProviderTBankShopResponse = {
-  shopId: string
-  providerId: string
-  shopCode: string | null
-  billingDescriptor: string
-  fullName: string | null
-  shortName: string
-  inn: string
-  kpp: string | null
-  ogrn: string | null
-  siteUrl: string | null
-  email: string
-  legalAddress: ProviderTBankShopLegalAddress
-  chiefExecutive: ProviderTBankShopChiefExecutive
-  settlementProfile: ProviderTBankShopSettlementProfile
-  createdAt: string
-  updatedAt: string
-}
-
-export type ProviderTBankShopBankAccountPatchRequest = {
-  bankAccount?: string | null
-  bankName?: string | null
-  bik?: string | null
-  correspondentAccount?: string | null
-  paymentDetails?: string | null
-}
-
-export type ProviderTBankShopCommandResponse = {
-  shop: ProviderTBankShopResponse
-  result?: {
-    status?: string
-    actionCode?: string
-    reasonCode?: string | null
-  }
-}
-
-export type SbpMemberResponse = {
-  sbpMemberId: string
-  displayBankName: string
-  bankName: string | null
-}
-
-export type SbpMemberOptionsResponse = {
-  source: string
-  items: SbpMemberResponse[]
-}
-
-export type PublicAddressSuggestion = {
-  value: string
-  unrestrictedValue?: string | null
-  postalCode?: string | null
-  country?: string | null
-  countryIsoCode?: string | null
-  region?: string | null
-  city?: string | null
-  street?: string | null
-  house?: string | null
-  flat?: string | null
-  qcGeo?: string | null
-  source?: string | null
-}
-
-export type PublicAddressSuggestionsResponse = {
-  provider: string
-  suggestions: PublicAddressSuggestion[]
-}
-
-export type PublicBankByBicResponse = {
-  source?: string | null
-  value?: string | null
-  unrestrictedValue?: string | null
-  bic: string
-  swift?: string | null
-  swifts?: string[] | null
-  inn?: string | null
-  branchNumber?: string | null
-  registrationNumber?: string | null
-  correspondentAccount?: string | null
-  paymentName?: string | null
-  shortName?: string | null
-  paymentCity?: string | null
-  opfType?: string | null
-  address?: string | null
-  unrestrictedAddress?: string | null
-  stateStatus?: string | null
-}
-
-export type ProviderGovernanceListResponse = {
-  items: ProviderGovernanceSummaryResponse[]
-  pagination: PaginationResponse
-}
-
-export type ProviderGovernanceOptionsResponse = InternalListOptionsResponse
 
 function buildApiUrl(path: string) {
   return `${API_BASE_URL}${path}`
@@ -724,37 +359,6 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
   return keysToCamel<TResponse>(await response.json())
 }
 
-export function getProviderOnboarding(applicationId: string) {
-  return requestJson<ProviderOnboardingResponse>(`/internal/provider-onboarding/${encodeURIComponent(applicationId)}`)
-}
-
-export function getProviderOnboardingOptions() {
-  return requestJson<ProviderOnboardingListOptionsResponse>('/internal/provider-onboarding/options')
-}
-
-export function getProviderOnboardingQueue(query: ProviderOnboardingQueueQuery) {
-  const searchParams = new URLSearchParams()
-
-  if (query.filter) {
-    searchParams.set('filter', query.filter)
-  }
-
-  if (query.sort) {
-    searchParams.set('sort', query.sort)
-  }
-
-  searchParams.set('page', String(query.page))
-  searchParams.set('pageSize', String(query.pageSize))
-
-  return requestJson<ProviderOnboardingQueueResponse>(`/internal/provider-onboarding?${searchParams.toString()}`)
-}
-
-export function postProviderOnboardingAction(applicationId: string, request: ProviderOnboardingActionRequest) {
-  return requestJson<ProviderOnboardingActionResponse>(`/internal/provider-onboarding/${encodeURIComponent(applicationId)}/actions`, {
-    method: 'POST',
-    body: JSON.stringify(request),
-  })
-}
 
 export function getEquipmentCategories(locale = 'ru-RU') {
   const searchParams = new URLSearchParams()
@@ -849,126 +453,217 @@ export function getInternalUser(userId: string) {
   return requestJson<InternalUserDetailResponse>(`/internal/users/${encodeURIComponent(userId)}`)
 }
 
-export function getInternalUserRoles(userId: string) {
-  return requestJson<InternalUserRoleResponse[]>(`/internal/users/${encodeURIComponent(userId)}/roles`)
+
+// ─── Providers: review and payout registration ─────────────────────────────────────────────────
+
+export type ProviderStatus = 'draft' | 'pending_review' | 'changes_requested' | 'rejected' | 'active' | 'suspended' | 'archived' | string
+export type SellerKind = 'self_employed' | 'sole_proprietor' | 'company' | string
+export type ProviderAction = 'approve' | 'request_changes' | 'reject' | 'reopen' | 'suspend' | 'activate' | 'archive'
+
+export type ProviderListItem = {
+  providerId: string
+  displayName: string
+  status: ProviderStatus
+  sellerKind: SellerKind | null
+  inn: string | null
+  legalName: string | null
+  agreementNumber: number | null
+  payoutDetailsPresent: boolean
+  payoutRegistered: boolean
+  canBePaid: boolean
+  reviewOpenedAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-export function getInternalUserExternalAuthProviders(userId: string) {
-  return requestJson<InternalExternalAuthProviderResponse[]>(`/internal/users/${encodeURIComponent(userId)}/external-auth-providers`)
+export type ProviderReviewSummary = {
+  reviewId?: string
+  openedAt: string
+  decidedAt: string | null
+  decidedByUserId: string | null
+  verdict: string | null
+  message: string | null
 }
 
-export async function getProviderGovernanceQueue(query?: InternalListQuery) {
-  const response = await requestJson<ProviderGovernanceSummaryResponse[] | ProviderGovernanceListResponse>(
-    buildInternalListUrl('/internal/providers/governance', query),
-  )
-
-  return normalizeInternalListResponse(response, query)
+export type ProviderProfile = {
+  providerId: string
+  displayName: string
+  description: string | null
+  address: string | null
+  slug: string | null
+  contactEmail: string | null
+  contactPhone: string | null
+  status: ProviderStatus
+  latestReview: ProviderReviewSummary | null
+  createdAt: string
+  updatedAt: string
 }
 
-export function getProviderGovernanceOptions() {
-  return requestJson<ProviderGovernanceOptionsResponse>('/internal/providers/governance/options')
+export type SellerProfile = {
+  sellerProfileId: string
+  kind: SellerKind
+  inn: string
+  person: { lastName: string; firstName: string; middleName: string | null } | null
+  business: {
+    legalName: string
+    registrationNumber: string
+    legalAddress: string
+    taxationSystem: string
+    vatRate: string
+    director: { lastName: string; firstName: string; middleName: string | null; position: string }
+  } | null
+  company: { kpp: string } | null
+  updatedAt: string
 }
 
-export function getInternalProviderProfile(providerId: string) {
-  return requestJson<ProviderProfileResponse>(`/internal/providers/${encodeURIComponent(providerId)}/profile`)
+export type ProviderAgreement = {
+  number: number
+  acceptedAt: string
+  status: 'accepted' | 'active' | 'terminated' | string
+  activatedAt: string | null
+  terminatedAt: string | null
+}
+
+export type ProviderReadiness = {
+  providerId: string
+  status: ProviderStatus
+  canSubmit: boolean
+  isPublic: boolean
+  canBePaid: boolean
+  items: Array<{ key: string; status: string; hint: string | null }>
+  latestReview: ProviderReviewSummary | null
+}
+
+export type ProviderPerson = {
+  userId: string
+  name: string
+  surname: string
+  phone: string | null
+  email: string | null
+  emailVerified?: boolean
+}
+
+export type ProviderMember = ProviderPerson & {
+  membershipId: string
+  role: string
+  createdAt: string
+}
+
+export type ProviderCard = {
+  profile: ProviderProfile
+  seller: SellerProfile | null
+  agreement: ProviderAgreement | null
+  readiness: ProviderReadiness
+  reviews: ProviderReviewSummary[]
+  owner: ProviderPerson | null
+  members: ProviderMember[]
+}
+
+export type ProviderPayoutDetails = {
+  method: 'sbp' | 'bank_account' | string
+  hasDetails: boolean
+  status: string | null
+  registered: boolean
+  beneficiaryName: string | null
+  phone: string | null
+  sbpMemberId: string | null
+  bankName: string | null
+  account: string | null
+  bik: string | null
+  correspondentAccount: string | null
+  updatedAt: string | null
+}
+
+export type ProviderPayoutShopPreview = {
+  billingDescriptor: string
+  fullName: string
+  shortName: string
+  inn: string
+  kpp: string | null
+  ogrn: string
+  legalAddressZip: string
+  legalAddressCity: string
+  legalAddressStreet: string
+  email: string
+  ceoFirstName: string
+  ceoLastName: string
+  ceoPhone: string
+  ceoBirthDate: string | null
+  bankAccount: string
+  bik: string
+  bankName: string
+  correspondentAccount: string | null
+  paymentDetails: string
+}
+
+export type ProviderPayoutShop = {
+  shopCode: string
+  billingDescriptor: string
+  shortName: string
+  email: string
+  ceoName: string
+  ceoPhone: string
+  legalAddress: string
+  bankAccount: string
+  bik: string
+  bankName: string
+  updatedAt: string
+}
+
+export type ProviderPayout = {
+  details: ProviderPayoutDetails
+  registration: {
+    kind: SellerKind
+    method: string
+    registered: boolean
+    sbpRecipientStatus: string | null
+    shop: ProviderPayoutShop | null
+    preview: ProviderPayoutShopPreview | null
+    missing: string[]
+    bankAccountOutOfSync: boolean
+  }
+}
+
+export type ProviderPayoutOverrides = {
+  shortName?: string
+  email?: string
+  ceoPhone?: string
+  ceoBirthDate?: string
+}
+
+export function getProviders(status?: ProviderStatus) {
+  return requestJson<ProviderListItem[]>(status ? `/internal/providers?status=${encodeURIComponent(status)}` : '/internal/providers')
+}
+
+export function getProviderCard(providerId: string) {
+  return requestJson<ProviderCard>(`/internal/providers/${encodeURIComponent(providerId)}`)
 }
 
 export function getInternalProviderMemberships(providerId: string) {
   return requestJson<InternalProviderMembershipResponse[]>(`/internal/providers/${encodeURIComponent(providerId)}/memberships`)
 }
 
-export function getProviderPayoutContracts(providerId: string) {
-  return requestJson<ProviderPayoutContractResponse[]>(`/internal/providers/${encodeURIComponent(providerId)}/payout-contracts`)
-}
-
-export function postProviderPayoutContract(providerId: string, request: ProviderPayoutContractRequest) {
-  return requestJson<ProviderPayoutCommandResponse>(`/internal/providers/${encodeURIComponent(providerId)}/payout-contracts`, {
+export function postProviderAction(providerId: string, action: ProviderAction, message?: string) {
+  return requestJson<ProviderProfile>(`/internal/providers/${encodeURIComponent(providerId)}/actions`, {
     method: 'POST',
-    body: JSON.stringify(request),
+    body: JSON.stringify({ action, message: message || undefined }),
   })
 }
 
-export function putProviderPayoutContract(providerId: string, contractId: string, request: ProviderPayoutContractRequest) {
-  return requestJson<ProviderPayoutCommandResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}`,
-    {
-      method: 'PUT',
-      body: JSON.stringify(request),
-    },
-  )
+export function getProviderPayout(providerId: string) {
+  return requestJson<ProviderPayout>(`/internal/providers/${encodeURIComponent(providerId)}/payout`)
 }
 
-export function getProviderPayoutSetupDraft(providerId: string, contractId: string) {
-  return requestJson<ProviderPayoutSetupDraftResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}/setup-draft`,
-  )
-}
-
-export function getProviderPayoutContractOptions() {
-  return requestJson<ProviderPayoutContractOptionsResponse>('/internal/provider-payout-contracts/options')
-}
-
-export function postProviderPayoutSbpRecipientRegister(providerId: string, contractId: string, sbpPayout: ProviderSbpPayout) {
-  return requestJson<ProviderPayoutCommandResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}/t-bank/sbp-recipient/register`,
-    {
-      method: 'POST',
-      body: JSON.stringify({ sbpPayout }),
-    },
-  )
-}
-
-export function postProviderPayoutTBankShopRegister(providerId: string, contractId: string, request: unknown) {
-  return requestJson<ProviderPayoutCommandResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/payout-contracts/${encodeURIComponent(contractId)}/t-bank/shop/register`,
-    {
-      method: 'POST',
-      body: JSON.stringify(request),
-    },
-  )
-}
-
-export function getSbpMembers() {
-  return requestJson<SbpMemberOptionsResponse>('/api/v1/payment-reference/sbp-members')
-}
-
-export function getProviderTBankShop(providerId: string) {
-  return requestJson<ProviderTBankShopResponse>(`/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop`)
-}
-
-export function patchProviderTBankShopBankAccount(providerId: string, request: ProviderTBankShopBankAccountPatchRequest) {
-  return requestJson<ProviderTBankShopCommandResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop/bank-account`,
-    { method: 'PATCH', body: JSON.stringify(request) },
-  )
-}
-
-export function putProviderTBankShop(providerId: string, request: unknown) {
-  return requestJson<ProviderTBankShopResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop`,
-    { method: 'PUT', body: JSON.stringify(request) },
-  )
-}
-
-export function postProviderTBankShopRegister(providerId: string) {
-  return requestJson<ProviderTBankShopCommandResponse>(
-    `/internal/providers/${encodeURIComponent(providerId)}/t-bank/shop/register`,
-    { method: 'POST' },
-  )
-}
-
-export function postPublicAddressSuggestions(query: string, count = 10, signal?: AbortSignal) {
-  return requestJson<PublicAddressSuggestionsResponse>('/api/v1/public/suggestions/address', {
+export function postProviderPayoutRegister(providerId: string, overrides: ProviderPayoutOverrides) {
+  return requestJson<ProviderPayout>(`/internal/providers/${encodeURIComponent(providerId)}/payout/register`, {
     method: 'POST',
-    body: JSON.stringify({ query, count }),
-    signal,
+    body: JSON.stringify(overrides),
   })
 }
 
-export function postPublicBankByBic(bic: string, signal?: AbortSignal) {
-  return requestJson<PublicBankByBicResponse>('/api/v1/public/suggestions/bank-by-bic', {
+export function postProviderPayoutSyncBankAccount(providerId: string) {
+  return requestJson<ProviderPayout>(`/internal/providers/${encodeURIComponent(providerId)}/payout/sync-bank-account`, {
     method: 'POST',
-    body: JSON.stringify({ bic }),
-    signal,
+    body: JSON.stringify({}),
   })
 }

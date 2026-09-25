@@ -3,7 +3,6 @@ import { keysToCamel, keysToSnake } from '../../lib/case-convert'
 import { clearStoredAuthTokens, getStoredAuthTokens, storeAuthTokens } from './authTokenStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
-const ADMIN_APP = 'admin'
 const OIDC_CLIENT_ID = import.meta.env.VITE_OIDC_CLIENT_ID?.trim() || 'sportgearhub-web-admin'
 const OIDC_SCOPE = 'openid profile email offline_access roles internal_api'
 const ACCESS_TOKEN_REFRESH_SKEW_MS = 60_000
@@ -30,8 +29,20 @@ type AuthUserResponse = {
   name?: string | null
   surname?: string | null
   email?: string | null
-  emailVerified?: boolean
-  roles?: string[]
+  phone?: string | null
+  platformRole?: string | null
+}
+
+export type VerificationStage = 'pending' | 'code_required' | 'confirmed' | 'consumed' | 'failed' | 'expired'
+
+export type VerificationStarted = {
+  accepted: boolean
+  message: string
+  verificationId: string
+  /** `pending` means a silent SIM push is with the user — wait, do not prompt for a code. */
+  stage: VerificationStage
+  codeLength: number
+  expiresAt: string
 }
 
 type SimpleTokenResponse = {
@@ -106,9 +117,10 @@ function mapSession(user: AuthUserResponse, tokens = getStoredAuthTokens()): Adm
 
   return {
     userId: user.userId,
-    name: nameParts.join(' ') || user.email || tokenEmail || 'Администратор',
+    name: nameParts.join(' ') || user.phone || user.email || tokenEmail || 'Администратор',
+    phone: user.phone ?? '',
     email: user.email ?? tokenEmail,
-    roles: user.roles ?? getClaimList(tokenClaims, ['roles', 'role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role']),
+    isAdmin: (user.platformRole ?? '').toLowerCase() === 'admin',
     tokens: tokens ?? undefined,
   }
 }
@@ -200,11 +212,13 @@ function mapSessionFromTokens(tokens: AdminOidcTokens): AdminSession {
     'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier',
   ])
 
+  const roles = getClaimList(claims, ['roles', 'role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'])
   return {
     userId: userId || email || 'admin',
     name: fullName || email || 'Администратор',
+    phone: getClaimString(claims, ['phone_number', 'phone']),
     email,
-    roles: getClaimList(claims, ['roles', 'role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role']),
+    isAdmin: roles.some((role) => role.toLowerCase() === 'admin'),
     tokens,
   }
 }
@@ -340,39 +354,46 @@ export async function getFreshAuthorizationHeader() {
   return `${tokens.tokenType || 'Bearer'} ${tokens.accessToken}`
 }
 
-async function postJson(path: string, body: Record<string, string>) {
-  await requestJson<void>(path, {
-    method: 'POST',
-    body: JSON.stringify(body),
-  })
-}
 
 // There are no passwords. Step 1: mail a one-time code to the address.
-export function requestSignInCode(email: string) {
-  return postJson('/api/v1/auth/email/start', {
-    email,
-    app: ADMIN_APP,
-    deliveryMode: 'code',
+export function requestPhoneCode(phone: string) {
+  return requestJson<VerificationStarted>('/api/v1/auth/phone/start', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
   })
 }
 
-// Step 2: exchange the code for a session.
-export async function signInWithCode(email: string, code: string) {
+export function getVerificationStage(verificationId: string) {
+  return requestJson<{ stage: VerificationStage }>(`/api/v1/auth/verifications/${encodeURIComponent(verificationId)}`)
+}
+
+// Only an existing account can sign in here: the console has no registration, an admin is made
+// by the platform. A number the API does not know gets a plain answer, not a registration form.
+export async function signInWithPhoneCode(phone: string, code: string) {
   clearStoredAuthTokens()
-  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/email/verify-code', {
+  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/phone/verify-code', {
     method: 'POST',
-    body: JSON.stringify({ email, code }),
+    body: JSON.stringify({ phone, code }),
   })
+  return adoptSignIn(result)
+}
 
+export async function signInWithConfirmedPhone(verificationId: string) {
+  clearStoredAuthTokens()
+  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/phone/redeem', {
+    method: 'POST',
+    body: JSON.stringify({ verificationId }),
+  })
+  return adoptSignIn(result)
+}
+
+async function adoptSignIn(result: SimpleTokenResponse) {
   if (result.status === 'registration_required') {
-    throw new Error('Учетная запись администратора не найдена.')
+    throw new Error('Этот номер не зарегистрирован. Доступ в консоль выдаёт платформа.')
   }
-
   return adoptSimpleToken(result)
 }
 
-// Passcode sign-in on a browser the admin has trusted. The request names no user — the account comes
-// from the stored device credential, so a short passcode cannot be sprayed at a leaked address list.
 export async function signInWithPasscode(passcode: string) {
   const device = loadStoredDevice()
 
@@ -476,11 +497,4 @@ export async function signOutCurrentUser() {
   } finally {
     clearStoredAuthTokens()
   }
-}
-
-export function requestEmailVerification(email: string) {
-  return postJson('/api/v1/auth/email/verification', {
-    email,
-    app: ADMIN_APP,
-  })
 }

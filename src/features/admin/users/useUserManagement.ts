@@ -3,13 +3,13 @@ import {
   getInternalUser,
   getInternalUserManagementOptions,
   getInternalUsers,
-  getProviderGovernanceQueue,
+  getProviders,
   type InternalListOptionsResponse,
   type InternalUserDetailResponse,
   type InternalListQuery,
   type InternalUserSummaryResponse,
   type PaginationResponse,
-  type ProviderGovernanceSummaryResponse,
+  type ProviderListItem,
 } from '../adminApi'
 
 const DEFAULT_PAGINATION: PaginationResponse = {
@@ -28,7 +28,7 @@ const DEFAULT_QUERY: InternalListQuery = {
 
 export function useUserManagement() {
   const [users, setUsers] = useState<InternalUserSummaryResponse[]>([])
-  const [providers, setProviders] = useState<ProviderGovernanceSummaryResponse[]>([])
+  const [providers, setProviders] = useState<ProviderListItem[]>([])
   const [selectedUser, setSelectedUser] = useState<InternalUserDetailResponse | null>(null)
   const [pagination, setPagination] = useState<PaginationResponse>(DEFAULT_PAGINATION)
   const [listOptions, setListOptions] = useState<InternalListOptionsResponse | null>(null)
@@ -43,11 +43,11 @@ export function useUserManagement() {
       setActiveQuery(query)
       const [userResponse, providerResponse, optionsResponse] = await Promise.all([
         getInternalUsers(query),
-        getProviderGovernanceQueue({ page: 1, pageSize: 100 }),
+        getProviders(),
         getInternalUserManagementOptions(),
       ])
       setUsers(userResponse.items)
-      setProviders(providerResponse.items)
+      setProviders(providerResponse)
       setPagination(userResponse.pagination)
       setListOptions(optionsResponse)
       setError('')
@@ -67,7 +67,7 @@ export function useUserManagement() {
       setSelectedUser(await getInternalUser(user.userId))
     } catch (loadError) {
       setDetailError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить пользователя')
-      setSelectedUser({ ...user, roles: [], externalAuthProviders: [], providerMemberships: [] })
+      setSelectedUser({ ...user, providerMemberships: [] })
     }
   }
 

@@ -1,22 +1,4 @@
-export type Severity = 'critical' | 'warning' | 'info' | 'ok'
-
-export type AdminSectionId =
-  | 'overview'
-  | 'onboarding'
-  | 'governance'
-  | 'readiness'
-  | 'users'
-  | 'bookings'
-  | 'payments'
-  | 'refunds'
-  | 'reservations'
-  | 'workflows'
-  | 'reconciliation'
-  | 'settlements'
-  | 'ledger'
-  | 'drift'
-  | 'canonicalization'
-  | 'system'
+export type AdminSectionId = 'overview' | 'onboarding' | 'providers' | 'users' | 'catalog'
 
 export type NavItem = {
   id: AdminSectionId
@@ -29,56 +11,13 @@ export type NavGroup = {
   items: NavItem[]
 }
 
-export type OnboardingViewMode = 'table' | 'analytics'
-
-export type ConsoleAction = {
-  label: string
-  tone?: 'default' | 'danger'
-}
-
-export type OnboardingApplication = {
-  id: string
-  providerId?: string
-  isApiBacked?: boolean
-  providerName: string
-  applicantName: string
-  applicantEmail: string
-  submittedAt: string
-  status: string
-  priority: Severity
-  legalName: string
-  legalCountryCode?: string
-  legalForm?: string
-  taxId: string
-  registrationNumber?: string
-  branchNumber?: string
-  registeredAddress?: string
-  contactPhone?: string
-  city: string
-  address?: string
-  description?: string
-  reviewNote: string
-  checklist: Array<{
-    label: string
-    done: boolean
-  }>
-}
-
-export type SectionRecord = {
-  id: string
-  title: string
-  status: string
-  updatedAt: string
-  owner: string
-  severity?: Severity
-  details: readonly FactRow[]
-}
-
 export type AdminSession = {
   userId: string
   name: string
+  phone: string
   email: string
-  roles: string[]
+  /** Only a platform admin may open the console; everyone else signs in and is told so. */
+  isAdmin: boolean
   tokens?: AdminOidcTokens
 }
 
@@ -90,5 +29,3 @@ export type AdminOidcTokens = {
   idToken?: string
   scope?: string
 }
-
-export type FactRow = readonly [label: string, value: string]
