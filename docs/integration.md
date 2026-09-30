@@ -19,15 +19,17 @@ Re-fetch all three together whenever the API changes; they are copies, kept in s
 
 ## Auth and access
 
-Sign-in is passwordless and identical to the other Sportgearhub apps. The console uses:
+Sign-in is passwordless and **email-only**: a one-time code, then a device passcode.
 
-- **Phone** — `POST /api/v1/auth/phone/start` → a silent SIM push (`stage: "pending"`, poll
-  `GET /api/v1/auth/verifications/{id}` then `POST /api/v1/auth/phone/redeem`) or an SMS code
-  (`POST /api/v1/auth/phone/verify-code`).
-- **Trusted device** — after a first sign-in the browser can enrol a passcode
-  (`POST /api/v1/auth/devices`) and unlock with `POST /api/v1/auth/passcode/sign-in`. The 256-bit
+- **Email code** — `POST /api/v1/auth/email/start` (`{ email }`) mails a code; `POST
+  /api/v1/auth/email/verify-code` (`{ email, code }`) returns tokens. Email has no silent push, so
+  `start` always asks for a code.
+- **Trusted device** — after the first sign-in the browser enrols a passcode
+  (`POST /api/v1/auth/devices`) and unlocks with `POST /api/v1/auth/passcode/sign-in`. The 256-bit
   `device_secret` is shown once and never leaves this browser; five wrong passcodes revoke the device,
-  never the account.
+  never the account. "Войти по коду из почты" drops the local device and falls back to an emailed code.
+
+The phone and SIM-push sign-in paths exist in the API but are not used by this console.
 
 The console has no registration — an admin is provisioned by the platform (`AdminBootstrap`). A number
 the API does not know gets a plain "not registered" answer, not a sign-up form.
@@ -41,10 +43,6 @@ Access to `/internal` requires all three, enforced server-side (401 / 403 otherw
 
 `App.tsx` opens the console only when `session.isAdmin`; everyone else sees a forbidden screen. Admin
 eligibility is never decided in frontend state.
-
-> **Known gap.** Some bootstrap admins are provisioned by email only and have no phone. This console's
-> sign-in is phone + passcode; an email-code entry (`/api/v1/auth/email/start` · `/verify-code`, both in
-> the spec) is not built yet. Add it before onboarding an email-only admin.
 
 ## Wire format
 

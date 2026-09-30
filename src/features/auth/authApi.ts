@@ -355,41 +355,25 @@ export async function getFreshAuthorizationHeader() {
 }
 
 
-// There are no passwords. Step 1: mail a one-time code to the address.
-export function requestPhoneCode(phone: string) {
-  return requestJson<VerificationStarted>('/api/v1/auth/phone/start', {
+// There are no passwords. Step 1: mail a one-time code to the address. Email sign-in has no silent
+// push, so `start` always comes back asking for a code.
+export function requestEmailCode(email: string) {
+  return requestJson<VerificationStarted>('/api/v1/auth/email/start', {
     method: 'POST',
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify({ email }),
   })
 }
 
-export function getVerificationStage(verificationId: string) {
-  return requestJson<{ stage: VerificationStage }>(`/api/v1/auth/verifications/${encodeURIComponent(verificationId)}`)
-}
-
-// Only an existing account can sign in here: the console has no registration, an admin is made
-// by the platform. A number the API does not know gets a plain answer, not a registration form.
-export async function signInWithPhoneCode(phone: string, code: string) {
+// Only an existing account can sign in here: the console has no registration, an admin is made by
+// the platform. An address the API does not know gets a plain answer, not a registration form.
+export async function signInWithEmailCode(email: string, code: string) {
   clearStoredAuthTokens()
-  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/phone/verify-code', {
+  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/email/verify-code', {
     method: 'POST',
-    body: JSON.stringify({ phone, code }),
+    body: JSON.stringify({ email, code }),
   })
-  return adoptSignIn(result)
-}
-
-export async function signInWithConfirmedPhone(verificationId: string) {
-  clearStoredAuthTokens()
-  const result = await requestJson<SimpleTokenResponse>('/api/v1/auth/phone/redeem', {
-    method: 'POST',
-    body: JSON.stringify({ verificationId }),
-  })
-  return adoptSignIn(result)
-}
-
-async function adoptSignIn(result: SimpleTokenResponse) {
   if (result.status === 'registration_required') {
-    throw new Error('Этот номер не зарегистрирован. Доступ в консоль выдаёт платформа.')
+    throw new Error('Эта почта не зарегистрирована. Доступ в консоль выдаёт платформа.')
   }
   return adoptSimpleToken(result)
 }

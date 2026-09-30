@@ -14,9 +14,8 @@ import { AuthFrame } from './features/auth/AuthFrame'
 import {
   enrolTrustedDevice,
   restoreCurrentSession,
-  signInWithConfirmedPhone,
+  signInWithEmailCode,
   signInWithPasscode,
-  signInWithPhoneCode,
   signOutCurrentUser,
 } from './features/auth/authApi'
 import { clearStoredAuthTokens } from './features/auth/authTokenStore'
@@ -138,8 +137,7 @@ function App() {
   if (!session) {
     return (
       <SignInPage
-        onSubmitCode={async (phone, code) => setSession(await signInWithPhoneCode(phone, code))}
-        onConfirmedPush={async (verificationId) => setSession(await signInWithConfirmedPhone(verificationId))}
+        onSubmitCode={async (email, code) => setSession(await signInWithEmailCode(email, code))}
         onSubmitPasscode={async (passcode) => {
           setSession(await signInWithPasscode(passcode))
           enterConsole()
