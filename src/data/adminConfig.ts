@@ -7,12 +7,22 @@ export const navGroups: NavGroup[] = [
     items: [{ id: 'overview', label: 'Обзор' }],
   },
   {
-    id: 'providers',
-    label: 'Поставщики',
+    id: 'moderation',
+    label: 'Модерация',
     items: [
-      { id: 'onboarding', label: 'Заявки' },
-      { id: 'providers', label: 'Поставщики' },
+      { id: 'onboarding', label: 'Заявки продавцов' },
+      { id: 'products', label: 'Товары' },
     ],
+  },
+  {
+    id: 'sellers',
+    label: 'Продавцы',
+    items: [{ id: 'sellers', label: 'Все продавцы' }],
+  },
+  {
+    id: 'finance',
+    label: 'Финансы',
+    items: [{ id: 'finance', label: 'Платежи и выплаты' }],
   },
   {
     id: 'access',
@@ -22,7 +32,7 @@ export const navGroups: NavGroup[] = [
   {
     id: 'catalog',
     label: 'Каталог',
-    items: [{ id: 'catalog', label: 'Каталог и бренды' }],
+    items: [{ id: 'catalog', label: 'Категории и атрибуты' }],
   },
 ]
 

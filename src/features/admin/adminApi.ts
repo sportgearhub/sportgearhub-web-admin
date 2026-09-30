@@ -4,18 +4,41 @@ import { getStoredAuthTokens } from '../auth/authTokenStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ?? ''
 
-type ApiErrorBody = {
-  message?: string
+// Every error is an RFC-7807 ProblemDetails with a stable `code` to branch on; field-validation
+// failures come as 400 with an `errors` object instead of a `code`. We keep both around so a caller
+// can react to a specific code (`seller.transition_not_allowed`, `payout.already_registered`, …)
+// while still having a human message to show.
+type ProblemDetails = {
   title?: string
+  detail?: string
+  status?: number
+  code?: string
+  errors?: Record<string, string[]>
 }
 
-export class NotFoundError extends Error {
-  constructor(message?: string) {
+export class ApiError extends Error {
+  readonly status: number
+  readonly code: string | null
+  readonly fieldErrors: Record<string, string[]>
+
+  constructor(message: string, status: number, code: string | null, fieldErrors: Record<string, string[]> = {}) {
     super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+    this.fieldErrors = fieldErrors
+  }
+}
+
+export class NotFoundError extends ApiError {
+  constructor(message: string, code: string | null = 'not_found') {
+    super(message, 404, code)
     this.name = 'NotFoundError'
   }
 }
 
+
+// ─── List envelope ──────────────────────────────────────────────────────────────────────────────
 
 export type PaginationResponse = {
   page: number
@@ -26,6 +49,10 @@ export type PaginationResponse = {
   hasNextPage: boolean
 }
 
+export type PagedResult<TItem> = {
+  items: TItem[]
+  pagination: PaginationResponse
+}
 
 export type InternalListQuery = {
   filter?: string
@@ -66,188 +93,7 @@ export type InternalListOptionsResponse = {
 }
 
 
-export type EquipmentCategoryResponse = {
-  categoryId: string
-  slug: string
-  label: string
-  labels?: Record<string, string> | null
-  resourceType: string
-  capacityMode: string
-  status: string
-  sortOrder: number
-}
-
-export type EquipmentAttributeResponse = {
-  attributeId: string
-  key: string
-  label: string
-  labels?: Record<string, string> | null
-  valueType: string
-  unit?: string | null
-  unitLabel?: string | null
-  referenceType?: string | null
-  requiredOn?: string[] | null
-  appliesTo?: string[] | null
-  visibleWhen?: unknown[] | null
-  filterable?: boolean
-  comparable?: boolean
-  searchable?: boolean
-  sortOrder: number
-  allowedValues?: Array<{
-    valueKey?: string
-    label?: string
-    labels?: Record<string, string> | null
-    sortOrder?: number
-  }> | null
-}
-
-export type EquipmentAttributeSchemaResponse = {
-  category: EquipmentCategoryResponse
-  attributes: EquipmentAttributeResponse[]
-}
-
-export type EquipmentBrandReviewStatus = 'approved' | 'pending_review' | 'merged' | 'rejected' | 'archived' | string
-export type EquipmentBrandReviewAction = 'approve' | 'reject' | 'archive' | 'merge' | string
-
-export type EquipmentBrandOption = {
-  value: string
-  label: string
-}
-
-export type EquipmentBrandActionOption = EquipmentBrandOption & {
-  requiresReasonCode: boolean
-  requiresTargetBrandId: boolean
-  allowedSourceStatuses: string[]
-}
-
-export type EquipmentBrandReasonOption = EquipmentBrandOption & {
-  appliesToActions: string[]
-}
-
-export type EquipmentBrandFieldOption = {
-  key: string
-  label: string
-  filterable: boolean
-  searchable: boolean
-  sortable: boolean
-}
-
-export type EquipmentBrandOptionsResponse = {
-  statuses: EquipmentBrandOption[]
-  actions: EquipmentBrandActionOption[]
-  reasonCodes: EquipmentBrandReasonOption[]
-  fields: EquipmentBrandFieldOption[]
-  pagination: {
-    defaultPage: number
-    defaultPageSize: number
-    maxPageSize: number
-  }
-}
-
-export type EquipmentBrandAliasResponse = {
-  aliasId: string
-  alias: string
-  normalizedAlias: string
-  locale?: string | null
-  source: string
-  status: string
-  createdAt: string
-  updatedAt: string
-}
-
-export type EquipmentBrandResponse = {
-  brandId: string
-  canonicalName: string
-  normalizedName: string
-  status: EquipmentBrandReviewStatus
-  website?: string | null
-  countryCode?: string | null
-  createdByProviderId?: string | null
-  mergedIntoBrandId?: string | null
-  reviewedByUserId?: string | null
-  reviewReasonCode?: string | null
-  reviewComments?: string | null
-  reviewedAt?: string | null
-  createdAt: string
-  updatedAt: string
-  aliases: EquipmentBrandAliasResponse[]
-}
-
-export type EquipmentBrandListResponse = {
-  items: EquipmentBrandResponse[]
-  summary?: {
-    total: number
-    byStatus: Record<string, number>
-  }
-  pagination: PaginationResponse
-}
-
-export type EquipmentBrandPatchRequest = {
-  canonicalName: string
-  website: string | null
-  countryCode: string | null
-  comments: string | null
-}
-
-export type EquipmentBrandCommandResponse = {
-  status?: string
-  action?: string
-  brand: EquipmentBrandResponse
-}
-
-export type EquipmentBrandActionRequest = {
-  action: EquipmentBrandReviewAction
-  reasonCode: string | null
-  comments: string | null
-  targetBrandId?: string | null
-}
-
-export type EquipmentBrandMergeCandidateResponse = {
-  brandId: string
-  canonicalName: string
-  normalizedName: string
-  status: string
-  confidence?: number | null
-  matchKind?: string | null
-  aliases?: string[] | null
-}
-
-export type EquipmentBrandMergeCandidatesResponse = {
-  items: EquipmentBrandMergeCandidateResponse[]
-}
-
-export type InternalUserSummaryResponse = {
-  userId: string
-  name: string
-  surname: string
-  email?: string | null
-  phone?: string | null
-  emailVerified: boolean
-  phoneVerified: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export type InternalProviderMembershipResponse = {
-  providerMembershipId: string
-  userId: string
-  providerId: string
-  role: string
-  createdAt: string
-  updatedAt: string
-}
-
-export type InternalUserDetailResponse = InternalUserSummaryResponse & {
-  providerMemberships: InternalProviderMembershipResponse[]
-}
-
-export type InternalUsersListResponse = {
-  items: InternalUserSummaryResponse[]
-  pagination: PaginationResponse
-}
-
-export type InternalUserManagementOptionsResponse = InternalListOptionsResponse
-
+// ─── Request core ─────────────────────────────────────────────────────────────────────────────
 
 function buildApiUrl(path: string) {
   return `${API_BASE_URL}${path}`
@@ -274,39 +120,23 @@ function buildInternalListUrl(path: string, query?: InternalListQuery) {
   return `${path}?${searchParams.toString()}`
 }
 
-function normalizeInternalListResponse<TItem>(response: TItem[] | { items: TItem[]; pagination: PaginationResponse }, query?: InternalListQuery) {
-  if (Array.isArray(response)) {
-    const page = query?.page ?? 1
-    const pageSize = query?.pageSize ?? response.length
-    const totalItems = response.length
-    const totalPages = Math.max(1, Math.ceil(totalItems / Math.max(pageSize, 1)))
-
-    return {
-      items: response,
-      pagination: {
-        page,
-        pageSize,
-        totalItems,
-        totalPages,
-        hasPreviousPage: page > 1,
-        hasNextPage: page < totalPages,
-      },
-    }
-  }
-
-  return response
-}
-
-async function parseError(response: Response) {
+async function readProblem(response: Response): Promise<ApiError> {
   try {
-    const errorBody = keysToCamel<ApiErrorBody>(await response.json())
-    return errorBody.message ?? errorBody.title ?? `Сервис вернул ${response.status}`
+    const body = keysToCamel<ProblemDetails & { errors?: Record<string, string[]> }>(await response.json())
+    // keysToCamel lower-cases the wire `errors` keys too; that only changes the field names we echo,
+    // never the messages, and we mostly surface the joined message anyway.
+    const fieldErrors = body.errors ?? {}
+    const firstFieldMessage = Object.values(fieldErrors).flat().find(Boolean)
+    const message = body.detail || body.title || firstFieldMessage || `Сервис вернул ${response.status}`
+    return new ApiError(message, response.status, body.code ?? null, fieldErrors)
   } catch {
-    return `Сервис вернул ${response.status}`
+    return new ApiError(`Сервис вернул ${response.status}`, response.status, null)
   }
 }
 
-async function requestJson<TResponse>(path: string, init?: RequestInit) {
+type RequestOptions = RequestInit & { body?: BodyInit | null }
+
+async function requestJson<TResponse>(path: string, init?: RequestOptions): Promise<TResponse> {
   const headers = new Headers(init?.headers)
   const authorizationHeader = await getFreshAuthorizationHeader()
 
@@ -318,7 +148,7 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
 
   // Call sites build camelCase bodies; the wire format is snake_case. Converting here keeps a single
   // translation point instead of hand-editing every request literal.
-  const requestInit: RequestInit = { ...init }
+  const requestInit: RequestOptions = { ...init }
   if (typeof requestInit.body === 'string') {
     try {
       requestInit.body = JSON.stringify(keysToSnake(JSON.parse(requestInit.body)))
@@ -349,121 +179,53 @@ async function requestJson<TResponse>(path: string, init?: RequestInit) {
   }
 
   if (!response.ok) {
-    const errorMessage = await parseError(response)
+    const error = await readProblem(response)
     if (response.status === 404) {
-      throw new NotFoundError(errorMessage)
+      throw new NotFoundError(error.message, error.code)
     }
-    throw new Error(errorMessage)
+    throw error
+  }
+
+  if (response.status === 204) {
+    return undefined as TResponse
   }
 
   return keysToCamel<TResponse>(await response.json())
 }
 
-
-export function getEquipmentCategories(locale = 'ru-RU') {
-  const searchParams = new URLSearchParams()
-  searchParams.set('locale', locale)
-
-  return requestJson<EquipmentCategoryResponse[]>(`/internal/equipment-categories?${searchParams.toString()}`)
+/** These endpoints take no body — the path carries everything. Send no payload and no Content-Type. */
+function postNoBody<TResponse>(path: string) {
+  return requestJson<TResponse>(path, { method: 'POST' })
 }
 
-export function getEquipmentCategoryAttributes(categorySlug: string, locale = 'ru-RU') {
-  const searchParams = new URLSearchParams()
-  searchParams.set('locale', locale)
-
-  return requestJson<EquipmentAttributeSchemaResponse>(
-    `/internal/equipment-categories/${encodeURIComponent(categorySlug)}/attributes?${searchParams.toString()}`,
-  )
+function jsonBody<TResponse>(method: 'POST' | 'PATCH' | 'PUT', path: string, payload: unknown) {
+  return requestJson<TResponse>(path, { method, body: JSON.stringify(payload) })
 }
 
-export function getEquipmentBrandOptions() {
-  return requestJson<EquipmentBrandOptionsResponse>('/internal/equipment-brands/options')
-}
-
-export function getEquipmentBrands({
-  status,
-  query,
-  page,
-  pageSize,
-}: {
-  status?: string
-  query?: string
-  page: number
-  pageSize: number
-}) {
-  const searchParams = new URLSearchParams()
-
-  if (status) {
-    searchParams.set('status', status)
-  }
-
-  if (query) {
-    searchParams.set('query', query)
-  }
-
-  searchParams.set('page', String(page))
-  searchParams.set('pageSize', String(pageSize))
-
-  return requestJson<EquipmentBrandListResponse>(`/internal/equipment-brands?${searchParams.toString()}`)
-}
-
-export function getEquipmentBrand(brandId: string) {
-  return requestJson<EquipmentBrandResponse>(`/internal/equipment-brands/${encodeURIComponent(brandId)}`)
-}
-
-export function patchEquipmentBrand(brandId: string, request: EquipmentBrandPatchRequest) {
-  return requestJson<EquipmentBrandCommandResponse>(`/internal/equipment-brands/${encodeURIComponent(brandId)}`, {
-    method: 'PATCH',
-    body: JSON.stringify(request),
-  })
-}
-
-export function getEquipmentBrandMergeCandidates(brandId: string, query?: string, limit = 10) {
-  const searchParams = new URLSearchParams()
-
-  if (query) {
-    searchParams.set('query', query)
-  }
-
-  searchParams.set('limit', String(limit))
-
-  return requestJson<EquipmentBrandMergeCandidatesResponse>(
-    `/internal/equipment-brands/${encodeURIComponent(brandId)}/merge-candidates?${searchParams.toString()}`,
-  )
-}
-
-export function postEquipmentBrandAction(brandId: string, request: EquipmentBrandActionRequest) {
-  return requestJson<EquipmentBrandCommandResponse>(`/internal/equipment-brands/${encodeURIComponent(brandId)}/actions`, {
-    method: 'POST',
-    body: JSON.stringify(request),
-  })
-}
-
-export async function getInternalUsers(query?: InternalListQuery) {
-  const response = await requestJson<InternalUserSummaryResponse[] | InternalUsersListResponse>(buildInternalListUrl('/internal/users', query))
-
-  return normalizeInternalListResponse(response, query)
-}
-
-export function getInternalUserManagementOptions() {
-  return requestJson<InternalUserManagementOptionsResponse>('/internal/users/options')
-}
-
-export function getInternalUser(userId: string) {
-  return requestJson<InternalUserDetailResponse>(`/internal/users/${encodeURIComponent(userId)}`)
-}
+const id = (value: string) => encodeURIComponent(value)
 
 
-// ─── Providers: review and payout registration ─────────────────────────────────────────────────
+// ═══ Sellers ══════════════════════════════════════════════════════════════════════════════════
 
-export type ProviderStatus = 'draft' | 'pending_review' | 'changes_requested' | 'rejected' | 'active' | 'suspended' | 'archived' | string
-export type SellerKind = 'self_employed' | 'sole_proprietor' | 'company' | string
-export type ProviderAction = 'approve' | 'request_changes' | 'reject' | 'reopen' | 'suspend' | 'activate' | 'archive'
+export type SellerStatus =
+  | 'draft'
+  | 'pending_review'
+  | 'changes_requested'
+  | 'rejected'
+  | 'active'
+  | 'suspended'
+  | 'archived'
+  | (string & {})
 
-export type ProviderListItem = {
-  providerId: string
+export type SellerKind = 'self_employed' | 'sole_proprietor' | 'company' | (string & {})
+
+/** The whole rulebook is the transition table in docs/admin-api-integration.md — drive buttons from it. */
+export type SellerAction = 'approve' | 'request_changes' | 'reject' | 'reopen' | 'suspend' | 'activate' | 'archive'
+
+export type SellerListItem = {
+  sellerId: string
   displayName: string
-  status: ProviderStatus
+  status: SellerStatus
   sellerKind: SellerKind | null
   inn: string | null
   legalName: string | null
@@ -476,91 +238,148 @@ export type ProviderListItem = {
   updatedAt: string
 }
 
-export type ProviderReviewSummary = {
+export type SellerReviewQueueItem = {
+  sellerId: string
+  displayName: string
+  status: SellerStatus
+  sellerKind: SellerKind | null
+  inn: string | null
+  legalName: string | null
+  openedAt: string
+  updatedAt: string
+}
+
+export type SellerReviewSummary = {
   reviewId?: string
   openedAt: string
   decidedAt: string | null
-  decidedByUserId: string | null
+  decidedByUserId?: string | null
   verdict: string | null
   message: string | null
 }
 
-export type ProviderProfile = {
-  providerId: string
+export type SellerProfileInfo = {
+  sellerId: string
   displayName: string
   description: string | null
   address: string | null
   slug: string | null
   contactEmail: string | null
   contactPhone: string | null
-  status: ProviderStatus
-  latestReview: ProviderReviewSummary | null
+  status: SellerStatus
+  latestReview: SellerReviewSummary | null
   createdAt: string
   updatedAt: string
 }
 
-export type SellerProfile = {
-  sellerProfileId: string
-  kind: SellerKind
+export type SellerPerson = { surname: string; name: string; patronymic: string | null }
+export type SellerDirector = SellerPerson & { position: string }
+
+/**
+ * The legal identity is a discriminated union on `kind`, flattened onto one object by the API:
+ * `self_employed` carries `person`; `sole_proprietor` and `company` carry the business block, and a
+ * company adds `kpp`.
+ */
+export type SellerLegalIdentity = {
+  legalIdentityId: string
   inn: string
-  person: { lastName: string; firstName: string; middleName: string | null } | null
-  business: {
-    legalName: string
-    registrationNumber: string
-    legalAddress: string
-    taxationSystem: string
-    vatRate: string
-    director: { lastName: string; firstName: string; middleName: string | null; position: string }
-  } | null
-  company: { kpp: string } | null
-  updatedAt: string
+  kind: SellerKind
+  person?: SellerPerson | null
+  legalName?: string | null
+  registrationNumber?: string | null
+  legalAddress?: string | null
+  taxationSystem?: string | null
+  vatRate?: string | null
+  director?: SellerDirector | null
+  kpp?: string | null
 }
 
-export type ProviderAgreement = {
+export type SellerAgreement = {
   number: number
   acceptedAt: string
-  status: 'accepted' | 'active' | 'terminated' | string
+  status: 'accepted' | 'active' | 'terminated' | (string & {})
   activatedAt: string | null
   terminatedAt: string | null
 }
 
-export type ProviderReadiness = {
-  providerId: string
-  status: ProviderStatus
+export type SellerReadinessItem = {
+  key: 'profile' | 'seller_profile' | 'payout' | (string & {})
+  status: 'ready' | 'missing' | 'awaiting_registration' | (string & {})
+  hint: string | null
+}
+
+export type SellerReadiness = {
+  sellerId: string
+  status: SellerStatus
   canSubmit: boolean
   isPublic: boolean
   canBePaid: boolean
-  items: Array<{ key: string; status: string; hint: string | null }>
-  latestReview: ProviderReviewSummary | null
+  items: SellerReadinessItem[]
+  latestReview: SellerReviewSummary | null
 }
 
-export type ProviderPerson = {
+export type SellerOwner = {
   userId: string
   name: string
   surname: string
   phone: string | null
   email: string | null
-  emailVerified?: boolean
+  emailVerified: boolean
 }
 
-export type ProviderMember = ProviderPerson & {
+export type SellerMember = {
   membershipId: string
+  userId: string
+  name: string
+  surname: string
+  phone: string | null
   role: string
   createdAt: string
 }
 
-export type ProviderCard = {
-  profile: ProviderProfile
-  seller: SellerProfile | null
-  agreement: ProviderAgreement | null
-  readiness: ProviderReadiness
-  reviews: ProviderReviewSummary[]
-  owner: ProviderPerson | null
-  members: ProviderMember[]
+export type SellerCard = {
+  profile: SellerProfileInfo
+  seller: SellerLegalIdentity | null
+  agreement: SellerAgreement | null
+  readiness: SellerReadiness
+  reviews: SellerReviewSummary[]
+  owner: SellerOwner | null
+  members: SellerMember[]
 }
 
-export type ProviderPayoutDetails = {
-  method: 'sbp' | 'bank_account' | string
+export type SellerMembership = {
+  membershipId: string
+  userId: string
+  sellerId: string
+  role: string
+  createdAt: string
+}
+
+export function getSellers(status?: SellerStatus) {
+  return requestJson<SellerListItem[]>(status ? `/internal/sellers?status=${id(status)}` : '/internal/sellers')
+}
+
+export function getSellerReviewQueue(status?: SellerStatus) {
+  return requestJson<SellerReviewQueueItem[]>(status ? `/internal/sellers/review-queue?status=${id(status)}` : '/internal/sellers/review-queue')
+}
+
+export function getSeller(sellerId: string) {
+  return requestJson<SellerCard>(`/internal/sellers/${id(sellerId)}`)
+}
+
+export function getSellerMemberships(sellerId: string) {
+  return requestJson<SellerMembership[]>(`/internal/sellers/${id(sellerId)}/memberships`)
+}
+
+export function postSellerAction(sellerId: string, action: SellerAction, message?: string) {
+  return jsonBody<SellerProfileInfo>('POST', `/internal/sellers/${id(sellerId)}/actions`, { action, message: message || undefined })
+}
+
+
+// ─── Payouts and bank binding ─────────────────────────────────────────────────────────────────
+
+export type SellerPayoutDetails = {
+  method: 'sbp' | 'bank_account' | (string & {})
   hasDetails: boolean
   status: string | null
   registered: boolean
@@ -571,10 +390,23 @@ export type ProviderPayoutDetails = {
   account: string | null
   bik: string | null
   correspondentAccount: string | null
-  updatedAt: string | null
 }
 
-export type ProviderPayoutShopPreview = {
+export type SellerPayoutShop = {
+  shopCode: string
+  billingDescriptor: string
+  shortName: string
+  email: string
+  ceoName: string
+  ceoPhone: string
+  legalAddress: string
+  bankAccount: string
+  bik: string
+  bankName: string
+  updatedAt: string
+}
+
+export type SellerPayoutShopPreview = {
   billingDescriptor: string
   fullName: string
   shortName: string
@@ -596,74 +428,591 @@ export type ProviderPayoutShopPreview = {
   paymentDetails: string
 }
 
-export type ProviderPayoutShop = {
-  shopCode: string
-  billingDescriptor: string
-  shortName: string
-  email: string
-  ceoName: string
-  ceoPhone: string
-  legalAddress: string
-  bankAccount: string
-  bik: string
-  bankName: string
-  updatedAt: string
+export type SellerPayoutRegistration = {
+  kind: SellerKind
+  method: string
+  registered: boolean
+  sbpRecipientStatus: string | null
+  shop: SellerPayoutShop | null
+  preview: SellerPayoutShopPreview | null
+  missing: string[]
+  bankAccountOutOfSync: boolean
 }
 
-export type ProviderPayout = {
-  details: ProviderPayoutDetails
-  registration: {
-    kind: SellerKind
-    method: string
-    registered: boolean
-    sbpRecipientStatus: string | null
-    shop: ProviderPayoutShop | null
-    preview: ProviderPayoutShopPreview | null
-    missing: string[]
-    bankAccountOutOfSync: boolean
-  }
+export type SellerPayout = {
+  details: SellerPayoutDetails
+  registration: SellerPayoutRegistration
 }
 
-export type ProviderPayoutOverrides = {
+/** Overrides fill the `missing[]` fields the preview could not assemble from stored facts. */
+export type SellerPayoutOverrides = {
   shortName?: string
   email?: string
   ceoPhone?: string
   ceoBirthDate?: string
 }
 
-export function getProviders(status?: ProviderStatus) {
-  return requestJson<ProviderListItem[]>(status ? `/internal/providers?status=${encodeURIComponent(status)}` : '/internal/providers')
+export function getSellerPayout(sellerId: string) {
+  return requestJson<SellerPayout>(`/internal/sellers/${id(sellerId)}/payout`)
 }
 
-export function getProviderCard(providerId: string) {
-  return requestJson<ProviderCard>(`/internal/providers/${encodeURIComponent(providerId)}`)
+export function postSellerPayoutRegister(sellerId: string, overrides: SellerPayoutOverrides = {}) {
+  return jsonBody<SellerPayout>('POST', `/internal/sellers/${id(sellerId)}/payout/register`, overrides)
 }
 
-export function getInternalProviderMemberships(providerId: string) {
-  return requestJson<InternalProviderMembershipResponse[]>(`/internal/providers/${encodeURIComponent(providerId)}/memberships`)
+export function postSellerPayoutSyncBankAccount(sellerId: string) {
+  return postNoBody<SellerPayout>(`/internal/sellers/${id(sellerId)}/payout/sync-bank-account`)
 }
 
-export function postProviderAction(providerId: string, action: ProviderAction, message?: string) {
-  return requestJson<ProviderProfile>(`/internal/providers/${encodeURIComponent(providerId)}/actions`, {
-    method: 'POST',
-    body: JSON.stringify({ action, message: message || undefined }),
-  })
+export type AcquiringCommandResult = {
+  status: string
+  actionCode: string
+  reasonCode: string | null
 }
 
-export function getProviderPayout(providerId: string) {
-  return requestJson<ProviderPayout>(`/internal/providers/${encodeURIComponent(providerId)}/payout`)
+export type DealBindingMode = 'use_existing_deal' | 'create_on_init' | (string & {})
+
+export type DealBinding = {
+  bindingId: string
+  sellerId: string
+  status: 'draft' | 'active' | 'superseded' | 'blocked' | (string & {})
+  mode: string
+  dealId: string | null
+  createDealWithType: string | null
+  diagnostics: { existingDealIdPresent: boolean; createDealWithType: string | null } | null
+  createdAt: string
+  updatedAt: string
 }
 
-export function postProviderPayoutRegister(providerId: string, overrides: ProviderPayoutOverrides) {
-  return requestJson<ProviderPayout>(`/internal/providers/${encodeURIComponent(providerId)}/payout/register`, {
-    method: 'POST',
-    body: JSON.stringify(overrides),
-  })
+export type DealBindingCommand = { dealBinding: DealBinding; result: AcquiringCommandResult }
+
+export type PayoutDestination = {
+  destinationId: string
+  sellerId: string
+  kind: string
+  status: 'draft' | 'active' | 'retired' | 'rejected' | 'blocked' | (string & {})
+  beneficiaryName: string | null
+  shopCode: string | null
+  phone: string | null
+  sbpMemberId: string | null
+  displayBankName: string | null
+  createdAt: string
+  updatedAt: string
 }
 
-export function postProviderPayoutSyncBankAccount(providerId: string) {
-  return requestJson<ProviderPayout>(`/internal/providers/${encodeURIComponent(providerId)}/payout/sync-bank-account`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  })
+export type PayoutDestinationCommand = { destination: PayoutDestination; result: AcquiringCommandResult }
+
+export function postSellerDealBinding(sellerId: string, request: { mode: DealBindingMode; dealId?: string; createDealWithType?: string }) {
+  return jsonBody<DealBindingCommand>('POST', `/internal/sellers/${id(sellerId)}/deal-binding`, request)
+}
+
+export type DealBindingAction = 'activate' | 'block'
+
+export function postSellerDealBindingAction(sellerId: string, bindingId: string, request: { action: DealBindingAction; reasonCode?: string; comments?: string }) {
+  return jsonBody<DealBindingCommand>('POST', `/internal/sellers/${id(sellerId)}/deal-bindings/${id(bindingId)}/actions`, request)
+}
+
+export type PayoutDestinationAction = 'activate' | 'reject' | 'block'
+
+export function postSellerPayoutDestinationAction(sellerId: string, destinationId: string, request: { action: PayoutDestinationAction; reasonCode?: string; comments?: string }) {
+  return jsonBody<PayoutDestinationCommand>('POST', `/internal/sellers/${id(sellerId)}/payout-destinations/${id(destinationId)}/actions`, request)
+}
+
+export type SbpMember = { sbpMemberId: string; displayBankName: string; bankName: string }
+
+export function getSbpMembers() {
+  return requestJson<{ source: string; items: SbpMember[] }>('/api/v1/payment-reference/sbp-members')
+}
+
+
+// ═══ Product review ══════════════════════════════════════════════════════════════════════════
+
+export type ProductStatus =
+  | 'draft'
+  | 'pending_review'
+  | 'changes_requested'
+  | 'rejected'
+  | 'active'
+  | 'paused'
+  | 'suspended'
+  | 'archived'
+  | (string & {})
+
+export type ProductAction = 'approve' | 'request_changes' | 'reject' | 'suspend'
+
+export type ProductReviewQueueItem = {
+  productId: string
+  sellerId: string
+  sellerDisplayName: string
+  title: string
+  status: ProductStatus
+  submittedAt: string
+}
+
+export type ProductSection = {
+  key: string
+  title: string
+  isComplete: boolean
+  missing: string | null
+}
+
+export type ProductReview = {
+  openedAt: string
+  decidedAt: string | null
+  verdict: string | null
+  message: string | null
+}
+
+export type ProductReviewCard = {
+  productId: string
+  sellerId: string
+  sellerDisplayName: string
+  title: string
+  description: string | null
+  quantity: number
+  status: ProductStatus
+  sections: ProductSection[]
+  history: ProductReview[]
+}
+
+export function getProductReviewQueue(status?: ProductStatus) {
+  return requestJson<ProductReviewQueueItem[]>(status ? `/internal/products/review-queue?status=${id(status)}` : '/internal/products/review-queue')
+}
+
+export function getProductReviewCard(productId: string) {
+  return requestJson<ProductReviewCard>(`/internal/products/${id(productId)}`)
+}
+
+export function postProductAction(productId: string, action: ProductAction, message?: string) {
+  return jsonBody<ProductReviewCard>('POST', `/internal/products/${id(productId)}/actions`, { action, message: message || undefined })
+}
+
+
+// ═══ Payments, refunds, settlements, ledger ═══════════════════════════════════════════════════
+
+export type LedgerCoverage = {
+  expectsCollection: boolean
+  hasCollection: boolean
+  expectsRefund: boolean
+  hasRefund: boolean
+  expectsSettlement: boolean
+  hasSettlementProjection: boolean
+  expectsPayoutExecution: boolean
+  hasPayoutExecution: boolean
+}
+
+export type LedgerStatus = {
+  status: string
+  hasMissingFacts: boolean
+  entryCount: number
+  postedEntryCount: number
+  pendingRecoveryEntryCount: number
+  debitAmount: number
+  creditAmount: number
+  coverage: LedgerCoverage
+}
+
+export type PaymentRoutingSnapshot = {
+  dealId: string | null
+  payoutMode: string | null
+  recipientId: string | null
+  payoutDestinationId: string | null
+}
+
+export type InternalPaymentDetail = {
+  paymentIntentId: string
+  bookingId: string
+  collectionStatus: string
+  settlementStatus: string
+  refundStatus: string
+  totalChargeAmount: number
+  prepaidServiceAmount: number
+  depositAmount: number
+  retentionDeadlineAt: string | null
+  settlementPlanId: string | null
+  ledgerStatus: LedgerStatus | null
+  routingSnapshot: PaymentRoutingSnapshot | null
+  updatedAt: string
+}
+
+export type PaymentStatus = {
+  bookingId: string
+  paymentId: string
+  providerCode: string
+  paymentMethod: string
+  paymentStatus: string
+  externalStatus: string
+  amountMinorUnits: number
+  refundedAmountMinorUnits: number
+  paymentUrl: string | null
+  redirectDueDate: string | null
+  paidAt: string | null
+  refundedAt: string | null
+  updatedAt: string
+}
+
+export type PaymentCancel = {
+  bookingId: string
+  paymentId: string
+  paymentStatus: string
+  externalStatus: string
+  updatedAt: string
+}
+
+export type PaymentRefund = {
+  bookingId: string
+  paymentId: string
+  paymentStatus: string
+  externalStatus: string
+  refundedAmountMinorUnits: number
+  updatedAt: string
+}
+
+export type RefundSnapshot = {
+  refundedAt: string | null
+  externalStatus: string | null
+  collectionStatus: string | null
+  refundableAmount: number
+  sellerPayoutAmount: number
+  platformCommissionAmount: number
+}
+
+export type InternalRefundCase = {
+  paymentId: string
+  bookingId: string
+  refundStatus: string
+  collectedAmountMinorUnits: number
+  refundedAmountMinorUnits: number
+  remainingRefundableAmountMinorUnits: number
+  settlementPlanId: string | null
+  settlementStatus: string | null
+  settlementImpactReviewRequired: boolean
+  snapshot: RefundSnapshot | null
+  updatedAt: string
+}
+
+export type SettlementCommandResult = { status: string; actionCode: string; reasonCode: string | null }
+export type RefundCommand = { refundCase: InternalRefundCase; result: SettlementCommandResult }
+
+export type PayoutRecipientSnapshot = {
+  snapshotId: string
+  mode: string
+  payoutDestinationId: string | null
+  recipientId: string | null
+  beneficiaryName: string | null
+  bankName: string | null
+  bik: string | null
+  maskedBankAccount: string | null
+  correspondentAccount: string | null
+  phone: string | null
+  sbpMemberId: string | null
+  displayBankName: string | null
+  capturedAt: string
+}
+
+export type PayoutExecution = {
+  payoutExecutionId: string
+  settlementPlanId: string
+  dealId: string | null
+  recipientSnapshotId: string | null
+  amount: number
+  status: string
+  externalPayoutRef: string | null
+  createdAt: string
+  updatedAt: string
+  submittedAt: string | null
+  paidAt: string | null
+  failedAt: string | null
+}
+
+export type SettlementPlan = {
+  settlementPlanId: string
+  bookingId: string
+  paymentIntentId: string
+  sellerId: string
+  dealId: string | null
+  outcomeType: string
+  grossCollectedAmount: number
+  refundableAmount: number
+  sellerPayoutAmount: number
+  platformCommissionAmount: number
+  status: string
+  recipientSnapshot: PayoutRecipientSnapshot | null
+  payoutExecution: PayoutExecution | null
+  createdAt: string
+  updatedAt: string
+  executedAt: string | null
+}
+
+export type LedgerEntryMetadata = {
+  paymentStatus: string | null
+  externalStatus: string | null
+  orderId: string | null
+  refundedAt: string | null
+  settlementStatus: string | null
+  outcomeType: string | null
+  payoutStatus: string | null
+  dealId: string | null
+  bookingStatus: string | null
+}
+
+export type LedgerEntry = {
+  ledgerEntryId: string
+  entryKey: string
+  bookingId: string | null
+  paymentId: string | null
+  settlementPlanId: string | null
+  payoutExecutionId: string | null
+  sellerId: string | null
+  entryType: string
+  direction: string
+  amount: number
+  status: string
+  sourceAuthority: string
+  correlationRef: string | null
+  externalRef: string | null
+  metadata: LedgerEntryMetadata | null
+  occurredAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type LedgerView = {
+  bookingId: string | null
+  paymentId: string | null
+  settlementPlanId: string | null
+  payoutExecutionId: string | null
+  sellerId: string | null
+  status: LedgerStatus
+  entries: LedgerEntry[]
+  updatedAt: string
+}
+
+export function getPayment(paymentId: string) {
+  return requestJson<InternalPaymentDetail>(`/internal/payments/${id(paymentId)}`)
+}
+
+export function getPaymentStatus(paymentId: string) {
+  return requestJson<PaymentStatus>(`/internal/payments/${id(paymentId)}/status`)
+}
+
+export function postPaymentSync(paymentId: string) {
+  return postNoBody<PaymentStatus>(`/internal/payments/${id(paymentId)}/sync`)
+}
+
+export function postPaymentCancel(paymentId: string) {
+  return postNoBody<PaymentCancel>(`/internal/payments/${id(paymentId)}/cancel`)
+}
+
+export function getPaymentRefundCase(paymentId: string) {
+  return requestJson<InternalRefundCase>(`/internal/payments/${id(paymentId)}/refund`)
+}
+
+/** `amountMinorUnits` is in kopecks, not roubles — this endpoint talks to the acquirer. Omit for a full refund. */
+export function postPaymentRefund(paymentId: string, request: { amountMinorUnits?: number; reasonCode?: string }) {
+  return jsonBody<PaymentRefund>('POST', `/internal/payments/${id(paymentId)}/refund`, request)
+}
+
+export function postPaymentRefundReviewSettlementImpact(paymentId: string, request: { reasonCode?: string; comments?: string }) {
+  return jsonBody<RefundCommand>('POST', `/internal/payments/${id(paymentId)}/refund-case/review-settlement-impact`, request)
+}
+
+export function getBookingPayment(bookingId: string) {
+  return requestJson<InternalPaymentDetail>(`/internal/bookings/${id(bookingId)}/payment`)
+}
+
+export function getBookingRefundCase(bookingId: string) {
+  return requestJson<InternalRefundCase>(`/internal/bookings/${id(bookingId)}/refund`)
+}
+
+/** Pay a single booking out by hand — for one the scheduled worker missed. Takes no body; check the ledger after. */
+export function postBookingPayout(bookingId: string) {
+  return postNoBody<SettlementPlan>(`/internal/bookings/${id(bookingId)}/payout`)
+}
+
+export function getSettlementPlan(settlementPlanId: string) {
+  return requestJson<SettlementPlan>(`/internal/settlements/${id(settlementPlanId)}`)
+}
+
+export function getLedgerForBooking(bookingId: string) {
+  return requestJson<LedgerView>(`/internal/ledger/bookings/${id(bookingId)}`)
+}
+
+export function getLedgerForPayment(paymentId: string) {
+  return requestJson<LedgerView>(`/internal/ledger/payments/${id(paymentId)}`)
+}
+
+
+// ═══ Catalogue schema (equipment categories, attributes, bindings) ════════════════════════════
+
+export type TaxonomyStatus = 'active' | 'archived' | (string & {})
+export type EquipmentValueType = 'string' | 'integer' | 'decimal' | 'boolean' | 'enum' | 'reference' | (string & {})
+
+export type EquipmentCategoryResponse = {
+  categoryId: string
+  slug: string
+  name: string
+  status: TaxonomyStatus
+  sortOrder: number
+}
+
+export type EquipmentCategoryAdminResponse = EquipmentCategoryResponse & { createdAt: string }
+
+export type EquipmentAttributeAdminResponse = {
+  attributeId: string
+  key: string
+  valueType: EquipmentValueType
+  name: string
+  hint: string | null
+  unitLabel: string | null
+  unit: string | null
+  status: TaxonomyStatus
+  createdAt: string
+}
+
+export type EquipmentAttributeAdminPagination = {
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
+export type EquipmentAttributeAdminListResponse = {
+  items: EquipmentAttributeAdminResponse[]
+  pagination: EquipmentAttributeAdminPagination
+}
+
+export type EquipmentAttributeAllowedValueResponse = {
+  valueKey: string
+  name: string
+  sortOrder: number
+}
+
+/** The attribute as bound to a category — carries the category-specific rules (required, bounds, group). */
+export type EquipmentAttributeResponse = {
+  attributeId: string
+  key: string
+  name: string
+  hint: string | null
+  valueType: EquipmentValueType
+  unit: string | null
+  unitLabel: string | null
+  filterable: boolean
+  isRequired: boolean
+  groupKey: string | null
+  groupName: string | null
+  minValue: number | null
+  maxValue: number | null
+  minLength: number | null
+  maxLength: number | null
+  sortOrder: number
+  allowedValues: EquipmentAttributeAllowedValueResponse[]
+}
+
+export type EquipmentAttributeSchemaResponse = {
+  category: EquipmentCategoryResponse
+  attributes: EquipmentAttributeResponse[]
+}
+
+export type EquipmentCategoryBindingResponse = {
+  bindingId: string
+  categoryId: string
+  attributeId: string
+  filterable: boolean
+  sortOrder: number
+  createdAt: string
+}
+
+export type EquipmentAllowedValueAdminResponse = {
+  attributeDefinitionId: string
+  valueKey: string
+  name: string
+  sortOrder: number
+}
+
+export function getEquipmentCategories(locale = 'ru-RU') {
+  return requestJson<EquipmentCategoryResponse[]>(`/internal/equipment-categories?locale=${id(locale)}`)
+}
+
+export function getEquipmentCategoryAttributes(categorySlug: string, locale = 'ru-RU') {
+  return requestJson<EquipmentAttributeSchemaResponse>(`/internal/equipment-categories/${id(categorySlug)}/attributes?locale=${id(locale)}`)
+}
+
+export function createEquipmentCategory(request: { slug: string; name: string; status: TaxonomyStatus; sortOrder: number }) {
+  return jsonBody<EquipmentCategoryAdminResponse>('POST', '/internal/equipment-categories', request)
+}
+
+export function patchEquipmentCategory(categoryId: string, request: { slug?: string; name?: string; status?: TaxonomyStatus; sortOrder?: number }) {
+  return jsonBody<EquipmentCategoryAdminResponse>('PATCH', `/internal/equipment-categories/${id(categoryId)}`, request)
+}
+
+export function getEquipmentAttributes(query?: { status?: string; query?: string; page?: number; pageSize?: number }) {
+  const searchParams = new URLSearchParams()
+  if (query?.status) searchParams.set('status', query.status)
+  if (query?.query) searchParams.set('query', query.query)
+  searchParams.set('page', String(query?.page ?? 1))
+  searchParams.set('pageSize', String(query?.pageSize ?? 50))
+  return requestJson<EquipmentAttributeAdminListResponse>(`/internal/equipment-attributes?${searchParams.toString()}`)
+}
+
+export function getEquipmentAttribute(attributeId: string) {
+  return requestJson<EquipmentAttributeAdminResponse>(`/internal/equipment-attributes/${id(attributeId)}`)
+}
+
+export function createEquipmentAttribute(request: { key: string; valueType: EquipmentValueType; unit?: string; name: string; hint?: string; unitLabel?: string; status: TaxonomyStatus }) {
+  return jsonBody<EquipmentAttributeAdminResponse>('POST', '/internal/equipment-attributes', request)
+}
+
+export function patchEquipmentAttribute(attributeId: string, request: { key?: string; valueType?: EquipmentValueType; unit?: string; name?: string; hint?: string; unitLabel?: string; status?: TaxonomyStatus }) {
+  return jsonBody<EquipmentAttributeAdminResponse>('PATCH', `/internal/equipment-attributes/${id(attributeId)}`, request)
+}
+
+/** Replaces the whole allowed-value list for an `enum` attribute. */
+export function putEquipmentAllowedValues(attributeId: string, values: Array<{ valueKey: string; name: string; sortOrder?: number }>) {
+  return jsonBody<EquipmentAllowedValueAdminResponse[]>('PUT', `/internal/equipment-attributes/${id(attributeId)}/allowed-values`, { values })
+}
+
+export function bindEquipmentAttributeToCategory(categoryId: string, request: { attributeId: string; filterable?: boolean; sortOrder?: number }) {
+  return jsonBody<EquipmentCategoryBindingResponse>('POST', `/internal/equipment-categories/${id(categoryId)}/attributes`, request)
+}
+
+export function patchEquipmentCategoryBinding(categoryId: string, attributeId: string, request: { filterable?: boolean; sortOrder?: number }) {
+  return jsonBody<EquipmentCategoryBindingResponse>('PATCH', `/internal/equipment-categories/${id(categoryId)}/attributes/${id(attributeId)}`, request)
+}
+
+
+// ═══ Users ════════════════════════════════════════════════════════════════════════════════════
+
+export type InternalUserSummaryResponse = {
+  userId: string
+  name: string
+  surname: string
+  email?: string | null
+  phone?: string | null
+  emailVerified: boolean
+  phoneVerified: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export type InternalUserDetailResponse = InternalUserSummaryResponse & {
+  platformRole: string | null
+  memberships: SellerMembership[]
+}
+
+export type InternalUsersListResponse = PagedResult<InternalUserSummaryResponse>
+export type InternalUserManagementOptionsResponse = InternalListOptionsResponse
+
+export async function getInternalUsers(query?: InternalListQuery) {
+  return requestJson<InternalUsersListResponse>(buildInternalListUrl('/internal/users', query))
+}
+
+export function getInternalUserManagementOptions() {
+  return requestJson<InternalUserManagementOptionsResponse>('/internal/users/options')
+}
+
+export function getInternalUser(userId: string) {
+  return requestJson<InternalUserDetailResponse>(`/internal/users/${id(userId)}`)
 }

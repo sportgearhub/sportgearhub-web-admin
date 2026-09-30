@@ -4,25 +4,25 @@ import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
 import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
-import { getProviders, type ProviderListItem, type ProviderStatus } from '../adminApi'
+import { getSellers, type SellerListItem, type SellerStatus } from '../adminApi'
 import { formatDateTime } from '../shared/format'
-import { providerStatusLabel, providerStatusVariant, sellerKindLabel } from './providerLabels'
+import { sellerKindLabel, sellerStatusLabel, sellerStatusVariant } from './sellerLabels'
 
-const ONBOARDING_TABS: Array<{ status: ProviderStatus; label: string }> = [
+const ONBOARDING_TABS: Array<{ status: SellerStatus; label: string }> = [
   { status: 'pending_review', label: 'На проверке' },
   { status: 'changes_requested', label: 'Нужны изменения' },
   { status: 'rejected', label: 'Отклонённые' },
 ]
 
-type ProvidersPageProps = {
-  /** «Заявки» shows the statuses a reviewer acts on; «Поставщики» shows everyone. */
+type SellersPageProps = {
+  /** «Заявки» shows the statuses a reviewer acts on; «Продавцы» shows everyone. */
   mode: 'onboarding' | 'all'
-  onOpenProvider: (providerId: string) => void
+  onOpenSeller: (sellerId: string) => void
 }
 
-export function ProvidersPage({ mode, onOpenProvider }: ProvidersPageProps) {
-  const [status, setStatus] = useState<ProviderStatus | ''>(mode === 'onboarding' ? 'pending_review' : '')
-  const [rows, setRows] = useState<ProviderListItem[]>([])
+export function SellersPage({ mode, onOpenSeller }: SellersPageProps) {
+  const [status, setStatus] = useState<SellerStatus | ''>(mode === 'onboarding' ? 'pending_review' : '')
+  const [rows, setRows] = useState<SellerListItem[]>([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -30,11 +30,11 @@ export function ProvidersPage({ mode, onOpenProvider }: ProvidersPageProps) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setRows(await getProviders(status || undefined))
+      setRows(await getSellers(status || undefined))
       setError('')
     } catch (failure) {
       setRows([])
-      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить поставщиков')
+      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить продавцов')
     } finally {
       setLoading(false)
     }
@@ -48,7 +48,7 @@ export function ProvidersPage({ mode, onOpenProvider }: ProvidersPageProps) {
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase()
     if (!needle) return rows
-    return rows.filter((row) => [row.displayName, row.legalName, row.inn, row.providerId].some((value) => value?.toLowerCase().includes(needle)))
+    return rows.filter((row) => [row.displayName, row.legalName, row.inn, row.sellerId].some((value) => value?.toLowerCase().includes(needle)))
   }, [rows, query])
 
   return (
@@ -93,14 +93,14 @@ export function ProvidersPage({ mode, onOpenProvider }: ProvidersPageProps) {
             {loading && rows.length === 0 ? (
               <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">Загружаем…</TableCell></TableRow>
             ) : visible.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">{mode === 'onboarding' ? 'Заявок нет.' : 'Поставщиков нет.'}</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">{mode === 'onboarding' ? 'Заявок нет.' : 'Продавцов нет.'}</TableCell></TableRow>
             ) : visible.map((row) => (
-              <TableRow key={row.providerId} className="cursor-pointer" onClick={() => onOpenProvider(row.providerId)}>
+              <TableRow key={row.sellerId} className="cursor-pointer" onClick={() => onOpenSeller(row.sellerId)}>
                 <TableCell>
                   <strong className="block truncate text-sm font-medium">{row.displayName}</strong>
-                  <small className="block truncate text-xs text-muted-foreground">{row.providerId}</small>
+                  <small className="block truncate text-xs text-muted-foreground">{row.sellerId}</small>
                 </TableCell>
-                <TableCell><Badge variant={providerStatusVariant(row.status)}>{providerStatusLabel(row.status)}</Badge></TableCell>
+                <TableCell><Badge variant={sellerStatusVariant(row.status)}>{sellerStatusLabel(row.status)}</Badge></TableCell>
                 <TableCell className="text-sm">{sellerKindLabel(row.sellerKind)}</TableCell>
                 <TableCell>
                   <span className="block truncate text-sm">{row.legalName ?? '—'}</span>

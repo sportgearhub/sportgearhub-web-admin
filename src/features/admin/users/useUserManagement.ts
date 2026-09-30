@@ -3,13 +3,13 @@ import {
   getInternalUser,
   getInternalUserManagementOptions,
   getInternalUsers,
-  getProviders,
+  getSellers,
   type InternalListOptionsResponse,
   type InternalUserDetailResponse,
   type InternalListQuery,
   type InternalUserSummaryResponse,
   type PaginationResponse,
-  type ProviderListItem,
+  type SellerListItem,
 } from '../adminApi'
 
 const DEFAULT_PAGINATION: PaginationResponse = {
@@ -28,7 +28,7 @@ const DEFAULT_QUERY: InternalListQuery = {
 
 export function useUserManagement() {
   const [users, setUsers] = useState<InternalUserSummaryResponse[]>([])
-  const [providers, setProviders] = useState<ProviderListItem[]>([])
+  const [sellers, setSellers] = useState<SellerListItem[]>([])
   const [selectedUser, setSelectedUser] = useState<InternalUserDetailResponse | null>(null)
   const [pagination, setPagination] = useState<PaginationResponse>(DEFAULT_PAGINATION)
   const [listOptions, setListOptions] = useState<InternalListOptionsResponse | null>(null)
@@ -41,19 +41,19 @@ export function useUserManagement() {
     try {
       setIsLoading(true)
       setActiveQuery(query)
-      const [userResponse, providerResponse, optionsResponse] = await Promise.all([
+      const [userResponse, sellerResponse, optionsResponse] = await Promise.all([
         getInternalUsers(query),
-        getProviders(),
+        getSellers(),
         getInternalUserManagementOptions(),
       ])
       setUsers(userResponse.items)
-      setProviders(providerResponse)
+      setSellers(sellerResponse)
       setPagination(userResponse.pagination)
       setListOptions(optionsResponse)
       setError('')
     } catch (loadError) {
       setUsers([])
-      setProviders([])
+      setSellers([])
       setPagination(DEFAULT_PAGINATION)
       setError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить пользователей')
     } finally {
@@ -67,13 +67,13 @@ export function useUserManagement() {
       setSelectedUser(await getInternalUser(user.userId))
     } catch (loadError) {
       setDetailError(loadError instanceof Error ? loadError.message : 'Не удалось загрузить пользователя')
-      setSelectedUser({ ...user, providerMemberships: [] })
+      setSelectedUser({ ...user, platformRole: null, memberships: [] })
     }
   }
 
   return {
     users,
-    providers,
+    sellers,
     selectedUser,
     pagination,
     listOptions,

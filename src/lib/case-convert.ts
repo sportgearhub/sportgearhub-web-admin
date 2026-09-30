@@ -2,8 +2,13 @@
 // HTTP boundary keeps every component and type untouched and leaves exactly one place to reason about.
 //
 // The important subtlety: some payload objects are keyed by DATA, not by contract field names — a locale
-// map ({"ru-RU": "Лыжи"}), an attribute map ({"frame_size": "M"}). Renaming those keys corrupts the
+// map ({"ru-RU": "Лыжи"}), an attribute-value map ({"frame_size": "M"}). Renaming those keys corrupts the
 // payload, so the fields holding them are listed below and their values are passed through untouched.
+//
+// A name can carry a data map in one payload and a contract array in another — `attributes` is a
+// value map on a product instance, but an array of attribute definitions on the catalogue schema. The
+// pass-through therefore only fires for a plain object; an array under the same name is a contract
+// shape and is converted like anything else.
 const DATA_KEYED_MAP_FIELDS = new Set([
   'titles',
   'labels',
@@ -13,6 +18,10 @@ const DATA_KEYED_MAP_FIELDS = new Set([
   'byStatus',
   'by_status',
 ]);
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+}
 
 export function snakeToCamel(key: string): string {
   return key.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
@@ -38,7 +47,7 @@ function convert(value: unknown, mapKey: (key: string) => string): unknown {
 
   const out: Record<string, unknown> = {};
   for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    out[mapKey(key)] = DATA_KEYED_MAP_FIELDS.has(key)
+    out[mapKey(key)] = DATA_KEYED_MAP_FIELDS.has(key) && isPlainObject(item)
       ? item
       : convert(item, mapKey);
   }

@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader } from './components/ui/card'
 import { navGroups, navItems } from './data/adminConfig'
-import { EquipmentTaxonomyReview } from './features/admin/EquipmentTaxonomyReview'
+import { CatalogPage } from './features/admin/catalog/CatalogPage'
+import { FinancePage } from './features/admin/finance/FinancePage'
 import { OverviewPage } from './features/admin/overview/OverviewPage'
-import { ProviderCardPage } from './features/admin/providers/ProviderCardPage'
-import { ProvidersPage } from './features/admin/providers/ProvidersPage'
+import { ProductReviewPage } from './features/admin/products/ProductReviewPage'
+import { SellerCardPage } from './features/admin/sellers/SellerCardPage'
+import { SellersPage } from './features/admin/sellers/SellersPage'
 import { UserManagementPage } from './features/admin/users/UserManagementPage'
 import { SignInPage } from './features/auth/SignInPage'
 import { AuthFrame } from './features/auth/AuthFrame'
@@ -28,7 +30,9 @@ const LOCATION_CHANGE_EVENT = 'sportgearhub-location-change'
 const SECTION_PATHS: Record<AdminSectionId, string> = {
   overview: CONSOLE_PATH,
   onboarding: `${CONSOLE_PATH}/onboarding`,
-  providers: `${CONSOLE_PATH}/providers`,
+  products: `${CONSOLE_PATH}/products`,
+  sellers: `${CONSOLE_PATH}/sellers`,
+  finance: `${CONSOLE_PATH}/finance`,
   users: `${CONSOLE_PATH}/users`,
   catalog: `${CONSOLE_PATH}/catalog`,
 }
@@ -44,8 +48,8 @@ function sectionFromPath(path: string): AdminSectionId {
   return found?.[0] ?? 'overview'
 }
 
-function providerIdFromPath(path: string) {
-  const match = /^\/console\/providers\/([^/]+)$/.exec(path)
+function sellerIdFromPath(path: string) {
+  const match = /^\/console\/sellers\/([^/]+)$/.exec(path)
   return match ? decodeURIComponent(match[1]) : ''
 }
 
@@ -62,7 +66,7 @@ function App() {
   const [topBarContent, setTopBarContent] = useState<React.ReactNode | null>(null)
   const section = sectionFromPath(path)
   const currentSection = navItems.find((item) => item.id === section) ?? navItems[0]
-  const providerId = providerIdFromPath(path)
+  const sellerId = sellerIdFromPath(path)
 
   const navigateTo = useCallback((next: string) => {
     pushPath(next)
@@ -178,19 +182,27 @@ function App() {
       onSignOut={() => void signOut()}
     >
       {section === 'overview' ? (
-        <OverviewPage onOpenOnboarding={() => navigateTo(SECTION_PATHS.onboarding)} onOpenProviders={() => navigateTo(SECTION_PATHS.providers)} />
+        <OverviewPage
+          onOpenOnboarding={() => navigateTo(SECTION_PATHS.onboarding)}
+          onOpenSellers={() => navigateTo(SECTION_PATHS.sellers)}
+          onOpenProducts={() => navigateTo(SECTION_PATHS.products)}
+        />
       ) : section === 'onboarding' ? (
-        <ProvidersPage mode="onboarding" onOpenProvider={(id) => navigateTo(`${SECTION_PATHS.providers}/${encodeURIComponent(id)}`)} />
-      ) : section === 'providers' ? (
-        providerId ? (
-          <ProviderCardPage providerId={providerId} onBack={() => navigateTo(SECTION_PATHS.providers)} onTopBarContentChange={setTopBarContent} />
+        <SellersPage mode="onboarding" onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)} />
+      ) : section === 'products' ? (
+        <ProductReviewPage />
+      ) : section === 'sellers' ? (
+        sellerId ? (
+          <SellerCardPage sellerId={sellerId} onBack={() => navigateTo(SECTION_PATHS.sellers)} onTopBarContentChange={setTopBarContent} />
         ) : (
-          <ProvidersPage mode="all" onOpenProvider={(id) => navigateTo(`${SECTION_PATHS.providers}/${encodeURIComponent(id)}`)} />
+          <SellersPage mode="all" onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)} />
         )
+      ) : section === 'finance' ? (
+        <FinancePage />
       ) : section === 'users' ? (
         <UserManagementPage />
       ) : (
-        <EquipmentTaxonomyReview onTopBarContentChange={setTopBarContent} />
+        <CatalogPage />
       )}
     </ConsoleShell>
   )

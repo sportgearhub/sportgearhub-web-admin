@@ -1,4 +1,4 @@
-export type AdminSectionId = 'overview' | 'onboarding' | 'providers' | 'users' | 'catalog'
+export type AdminSectionId = 'overview' | 'onboarding' | 'products' | 'sellers' | 'finance' | 'users' | 'catalog'
 
 export type NavItem = {
   id: AdminSectionId

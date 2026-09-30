@@ -1,7 +1,7 @@
 import type { BadgeProps } from '../../../components/ui/badge'
-import type { ProviderStatus, SellerKind } from '../adminApi'
+import type { SellerKind, SellerStatus } from '../adminApi'
 
-export const providerStatusLabels: Record<string, string> = {
+export const sellerStatusLabels: Record<string, string> = {
   draft: 'Черновик',
   pending_review: 'На проверке',
   changes_requested: 'Нужны изменения',
@@ -11,11 +11,11 @@ export const providerStatusLabels: Record<string, string> = {
   archived: 'В архиве',
 }
 
-export function providerStatusLabel(status: ProviderStatus) {
-  return providerStatusLabels[status] ?? status
+export function sellerStatusLabel(status: SellerStatus) {
+  return sellerStatusLabels[status] ?? status
 }
 
-export function providerStatusVariant(status: ProviderStatus): BadgeProps['variant'] {
+export function sellerStatusVariant(status: SellerStatus): BadgeProps['variant'] {
   switch (status) {
     case 'active':
       return 'success'
@@ -62,15 +62,33 @@ export const vatLabels: Record<string, string> = {
   vat20: 'НДС 20 %',
 }
 
+/** Readiness item keys the API emits: profile, seller_profile, payout. */
 export const readinessLabels: Record<string, string> = {
   profile: 'Профиль проката',
-  seller: 'Данные продавца',
-  agreement: 'Договор',
+  seller_profile: 'Данные продавца',
   payout: 'Выплаты',
-  location: 'Пункт проката',
-  offer: 'Предложения',
 }
 
+export function readinessStatusLabel(status: string) {
+  switch (status) {
+    case 'ready':
+      return 'Готово'
+    case 'missing':
+      return 'Нет'
+    case 'awaiting_registration':
+      return 'Ждёт банк'
+    default:
+      return status
+  }
+}
+
+export function readinessStatusVariant(status: string): BadgeProps['variant'] {
+  if (status === 'ready') return 'success'
+  if (status === 'missing') return 'destructive'
+  return 'warning'
+}
+
+/** Field groups the shop-registration preview could not assemble; the operator fills only these. */
 export const missingFieldLabels: Record<string, string> = {
   agreement: 'номер договора (нет принятого договора)',
   short_name: 'краткое название с префиксом ИП/ООО',
@@ -81,10 +99,32 @@ export const missingFieldLabels: Record<string, string> = {
   bank_account: 'расчётный счёт, БИК и банк',
 }
 
-export function personName(person: { name?: string | null; surname?: string | null; lastName?: string | null; firstName?: string | null; middleName?: string | null } | null | undefined) {
+export function memberRoleLabel(role: string) {
+  switch (role) {
+    case 'owner':
+      return 'Владелец'
+    case 'manager':
+      return 'Менеджер'
+    case 'finance':
+      return 'Финансы'
+    default:
+      return 'Сотрудник'
+  }
+}
+
+export function personName(
+  person:
+    | { surname?: string | null; name?: string | null; patronymic?: string | null }
+    | null
+    | undefined,
+) {
   if (!person) return '—'
-  const parts = 'lastName' in person
-    ? [person.lastName, person.firstName, person.middleName]
-    : [person.surname, person.name]
-  return parts.filter(Boolean).join(' ') || '—'
+  return [person.surname, person.name, person.patronymic].filter(Boolean).join(' ') || '—'
+}
+
+export function agreementSummary(agreement: { number: number; acceptedAt: string; status: string } | null) {
+  if (!agreement) return 'не принят'
+  const state =
+    agreement.status === 'active' ? 'действует' : agreement.status === 'terminated' ? 'расторгнут' : 'принят, ждёт одобрения'
+  return { number: agreement.number, acceptedAt: agreement.acceptedAt, state }
 }

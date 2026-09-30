@@ -9,7 +9,7 @@ function buildPageSizeOptions(defaultPageSize: number, maxPageSize: number) {
 }
 
 export function UserManagementPage() {
-  const { users, providers, selectedUser, pagination, listOptions, isLoading, error, detailError, loadUsers, openUser, closeUser } = useUserManagement()
+  const { users, sellers, selectedUser, pagination, listOptions, isLoading, error, detailError, loadUsers, openUser, closeUser } = useUserManagement()
   const columns = useMemo(() => createUserColumns(listOptions), [listOptions])
   const defaultPageSize = listOptions?.pagination.defaultPageSize ?? 20
   const maxPageSize = listOptions?.pagination.maxPageSize ?? 100
@@ -32,7 +32,7 @@ export function UserManagementPage() {
         onQueryChange={(query) => void loadUsers(query)}
         onRowOpen={openUser}
       />
-      {selectedUser ? <UserDetailModal user={selectedUser} providers={providers} error={detailError} onClose={closeUser} /> : null}
+      {selectedUser ? <UserDetailModal user={selectedUser} sellers={sellers} error={detailError} onClose={closeUser} /> : null}
     </section>
   )
 }

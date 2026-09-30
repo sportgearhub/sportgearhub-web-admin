@@ -4,34 +4,54 @@ import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Input, Textarea } from '../../../components/ui/input'
+import { Select } from '../../../components/ui/select'
 import { useNotifications } from '../../../components/ui/notifications-context'
 import {
-  getProviderCard,
-  getProviderPayout,
-  postProviderAction,
-  postProviderPayoutRegister,
-  postProviderPayoutSyncBankAccount,
-  type ProviderAction,
-  type ProviderCard,
-  type ProviderPayout,
-  type ProviderPayoutOverrides,
+  getSeller,
+  getSellerPayout,
+  postSellerAction,
+  postSellerDealBinding,
+  postSellerDealBindingAction,
+  postSellerPayoutDestinationAction,
+  postSellerPayoutRegister,
+  postSellerPayoutSyncBankAccount,
+  type DealBinding,
+  type DealBindingMode,
+  type SellerAction,
+  type SellerCard,
+  type SellerPayout,
+  type SellerPayoutOverrides,
 } from '../adminApi'
 import { formatDateTime } from '../shared/format'
-import { missingFieldLabels, personName, providerStatusLabel, providerStatusVariant, readinessLabels, sellerKindLabel, taxationLabels, vatLabels } from './providerLabels'
+import {
+  memberRoleLabel,
+  missingFieldLabels,
+  personName,
+  readinessLabels,
+  readinessStatusLabel,
+  readinessStatusVariant,
+  sellerKindLabel,
+  sellerStatusLabel,
+  sellerStatusVariant,
+  taxationLabels,
+  vatLabels,
+} from './sellerLabels'
 
-type Tab = 'summary' | 'payout' | 'members'
+type Tab = 'summary' | 'payout' | 'acquiring' | 'members'
 
-const ACTIONS: Array<{ action: ProviderAction; label: string; from: string[]; needsMessage: boolean; tone?: 'default' | 'destructive' | 'outline' }> = [
+// The transition table from docs/admin-api-integration.md — anything else answers 409, so a button
+// that would 409 is simply not shown. `archive` is terminal, so it is confirmed before it fires.
+const ACTIONS: Array<{ action: SellerAction; label: string; from: string[]; needsMessage: boolean; needsConfirm?: boolean; tone?: 'default' | 'destructive' | 'outline' }> = [
   { action: 'approve', label: 'Одобрить', from: ['pending_review'], needsMessage: false },
   { action: 'request_changes', label: 'Запросить изменения', from: ['pending_review', 'active'], needsMessage: true, tone: 'outline' },
   { action: 'reject', label: 'Отклонить', from: ['pending_review'], needsMessage: true, tone: 'destructive' },
   { action: 'reopen', label: 'Вернуть в черновик', from: ['rejected'], needsMessage: false, tone: 'outline' },
   { action: 'suspend', label: 'Приостановить', from: ['active'], needsMessage: false, tone: 'destructive' },
   { action: 'activate', label: 'Возобновить', from: ['suspended'], needsMessage: false },
-  { action: 'archive', label: 'В архив', from: ['active', 'suspended'], needsMessage: false, tone: 'outline' },
+  { action: 'archive', label: 'В архив', from: ['active', 'suspended'], needsMessage: false, needsConfirm: true, tone: 'outline' },
 ]
 
-const ACTION_DONE: Record<ProviderAction, string> = {
+const ACTION_DONE: Record<SellerAction, string> = {
   approve: 'Кабинет одобрен',
   request_changes: 'Изменения запрошены',
   reject: 'Кабинет отклонён',
@@ -41,25 +61,25 @@ const ACTION_DONE: Record<ProviderAction, string> = {
   archive: 'Кабинет отправлен в архив',
 }
 
-type ProviderCardPageProps = {
-  providerId: string
+type SellerCardPageProps = {
+  sellerId: string
   onBack: () => void
   onTopBarContentChange?: (content: React.ReactNode | null) => void
 }
 
 /**
  * The cabinet as the reviewer sees it — what the seller sees, plus who is behind it — with the
- * decision in the header and the bank on its own tab.
+ * decision in the header, the bank on its own tab, and the acquirer bindings on theirs.
  */
-export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: ProviderCardPageProps) {
+export function SellerCardPage({ sellerId, onBack, onTopBarContentChange }: SellerCardPageProps) {
   const { notify } = useNotifications()
-  const [card, setCard] = useState<ProviderCard | null>(null)
-  const [payout, setPayout] = useState<ProviderPayout | null>(null)
+  const [card, setCard] = useState<SellerCard | null>(null)
+  const [payout, setPayout] = useState<SellerPayout | null>(null)
   const [payoutError, setPayoutError] = useState('')
   const [tab, setTab] = useState<Tab>('summary')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
-  const [pending, setPending] = useState<ProviderAction | null>(null)
+  const [pending, setPending] = useState<SellerAction | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -67,8 +87,8 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
     setLoading(true)
     try {
       const [nextCard, nextPayout] = await Promise.all([
-        getProviderCard(providerId),
-        getProviderPayout(providerId).then((value) => ({ value, error: '' })).catch((failure: unknown) => ({ value: null, error: failure instanceof Error ? failure.message : 'Не удалось загрузить выплаты' })),
+        getSeller(sellerId),
+        getSellerPayout(sellerId).then((value) => ({ value, error: '' })).catch((failure: unknown) => ({ value: null, error: failure instanceof Error ? failure.message : 'Не удалось загрузить выплаты' })),
       ])
       setCard(nextCard)
       setPayout(nextPayout.value)
@@ -80,7 +100,7 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
     } finally {
       setLoading(false)
     }
-  }, [providerId])
+  }, [sellerId])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0)
@@ -94,10 +114,10 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
           <ChevronLeft size={16} aria-hidden="true" /> Назад
         </Button>
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="shrink-0 text-muted-foreground">Поставщики</span>
+          <span className="shrink-0 text-muted-foreground">Продавцы</span>
           <span className="shrink-0 text-muted-foreground">›</span>
           <strong className="truncate font-semibold">{card?.profile.displayName ?? 'Кабинет'}</strong>
-          {card ? <Badge variant={providerStatusVariant(card.profile.status)}>{providerStatusLabel(card.profile.status)}</Badge> : null}
+          {card ? <Badge variant={sellerStatusVariant(card.profile.status)}>{sellerStatusLabel(card.profile.status)}</Badge> : null}
         </div>
         <Button type="button" variant="ghost" size="icon" className="ml-auto" onClick={() => void load()} aria-label="Обновить" title="Обновить">
           <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
@@ -107,10 +127,10 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
     return () => onTopBarContentChange?.(null)
   }, [card, loading, load, onBack, onTopBarContentChange])
 
-  async function apply(action: ProviderAction, text?: string) {
+  async function apply(action: SellerAction, text?: string) {
     setBusy(true)
     try {
-      await postProviderAction(providerId, action, text)
+      await postSellerAction(sellerId, action, text)
       notify({ tone: 'success', title: ACTION_DONE[action] })
       setPending(null)
       setMessage('')
@@ -122,13 +142,13 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
     }
   }
 
-  async function runPayout(work: () => Promise<ProviderPayout>, done: string) {
+  async function runPayout(work: () => Promise<SellerPayout>, done: string) {
     setBusy(true)
     try {
       setPayout(await work())
       setPayoutError('')
       notify({ tone: 'success', title: done })
-      const nextCard = await getProviderCard(providerId).catch(() => null)
+      const nextCard = await getSeller(sellerId).catch(() => null)
       if (nextCard) setCard(nextCard)
     } catch (failure) {
       notify({ tone: 'error', title: 'Банк не принял запрос', description: failure instanceof Error ? failure.message : undefined })
@@ -157,7 +177,7 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
     <section className="min-h-[calc(100vh-3.5rem)] bg-background">
       <div className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2">
         <div className="flex gap-1" role="tablist">
-          {([['summary', 'Обзор'], ['payout', 'Выплаты'], ['members', 'Доступы']] as Array<[Tab, string]>).map(([id, label]) => (
+          {([['summary', 'Обзор'], ['payout', 'Выплаты'], ['acquiring', 'Эквайринг'], ['members', 'Доступы']] as Array<[Tab, string]>).map(([id, label]) => (
             <Button key={id} type="button" size="sm" variant={tab === id ? 'secondary' : 'ghost'} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</Button>
           ))}
         </div>
@@ -170,7 +190,7 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
                 size="sm"
                 variant={item.tone ?? 'default'}
                 disabled={busy}
-                onClick={() => (item.needsMessage ? setPending(item.action) : void apply(item.action))}
+                onClick={() => (item.needsMessage || item.needsConfirm ? setPending(item.action) : void apply(item.action))}
               >
                 {item.label}
               </Button>
@@ -186,10 +206,11 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
           payout={payout}
           error={payoutError}
           busy={busy}
-          onRegister={(overrides) => runPayout(() => postProviderPayoutRegister(providerId, overrides), payout?.registration.method === 'sbp' ? 'Получатель СБП активирован' : 'Точка зарегистрирована в Т-Банке')}
-          onSync={() => runPayout(() => postProviderPayoutSyncBankAccount(providerId), 'Счёт обновлён в Т-Банке')}
+          onRegister={(overrides) => runPayout(() => postSellerPayoutRegister(sellerId, overrides), payout?.registration.method === 'sbp' ? 'Получатель СБП активирован' : 'Точка зарегистрирована в Т-Банке')}
+          onSync={() => runPayout(() => postSellerPayoutSyncBankAccount(sellerId), 'Счёт обновлён в Т-Банке')}
         />
       ) : null}
+      {tab === 'acquiring' ? <AcquiringTab sellerId={sellerId} /> : null}
       {tab === 'members' ? <MembersTab card={card} /> : null}
 
       {pendingAction ? (
@@ -199,12 +220,18 @@ export function ProviderCardPage({ providerId, onBack, onTopBarContentChange }: 
               <DialogTitle>{pendingAction.label}</DialogTitle>
             </DialogHeader>
             <DialogBody className="grid gap-3">
-              <p className="text-sm text-muted-foreground">Сообщение увидит продавец в кабинете. Напишите, что именно нужно исправить.</p>
-              <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={4} autoFocus placeholder="Например: укажите адрес пункта проката и добавьте хотя бы одно фото" />
+              {pendingAction.needsMessage ? (
+                <>
+                  <p className="text-sm text-muted-foreground">Сообщение увидит продавец в кабинете. Напишите, что именно нужно исправить.</p>
+                  <Textarea value={message} onChange={(event) => setMessage(event.target.value)} rows={4} autoFocus placeholder="Например: укажите адрес пункта проката и добавьте хотя бы одно фото" />
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">В архив — это навсегда. Кабинет и все его карточки скрываются с витрины, и вернуть из архива нельзя.</p>
+              )}
             </DialogBody>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setPending(null)} disabled={busy}>Отмена</Button>
-              <Button type="button" variant={pendingAction.tone === 'destructive' ? 'destructive' : 'default'} disabled={busy || !message.trim()} onClick={() => void apply(pendingAction.action, message.trim())}>
+              <Button type="button" variant={pendingAction.tone === 'destructive' ? 'destructive' : 'default'} disabled={busy || (pendingAction.needsMessage && !message.trim())} onClick={() => void apply(pendingAction.action, pendingAction.needsMessage ? message.trim() : undefined)}>
                 {pendingAction.label}
               </Button>
             </DialogFooter>
@@ -236,15 +263,9 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function readinessVariant(status: string) {
-  if (status === 'ready') return 'success'
-  if (status === 'missing') return 'destructive'
-  return 'warning'
-}
-
-function SummaryTab({ card }: { card: ProviderCard }) {
+function SummaryTab({ card }: { card: SellerCard }) {
   const seller = card.seller
-  const business = seller?.business
+  const isBusiness = seller ? seller.kind === 'sole_proprietor' || seller.kind === 'company' : false
   return (
     <div className="grid gap-4 p-4 lg:grid-cols-2">
       <Section title="Кабинет">
@@ -253,7 +274,7 @@ function SummaryTab({ card }: { card: ProviderCard }) {
           <Row label="Описание" value={card.profile.description} />
           <Row label="Адрес" value={card.profile.address} />
           <Row label="Создан" value={formatDateTime(card.profile.createdAt)} />
-          <Row label="Владелец" value={card.owner ? <>{personName(card.owner)} · {card.owner.phone ?? '—'}{card.owner.email ? <> · {card.owner.email}{card.owner.emailVerified ? ' ✓' : ' (не подтверждена)'}</> : null}</> : '—'} />
+          <Row label="Владелец" value={card.owner ? <>{personName({ surname: card.owner.surname, name: card.owner.name })} · {card.owner.phone ?? '—'}{card.owner.email ? <> · {card.owner.email}{card.owner.emailVerified ? ' ✓' : ' (не подтверждена)'}</> : null}</> : '—'} />
         </dl>
       </Section>
 
@@ -262,7 +283,7 @@ function SummaryTab({ card }: { card: ProviderCard }) {
           {card.readiness.items.map((item) => (
             <li key={item.key} className="flex items-center justify-between gap-3 py-2">
               <span>{readinessLabels[item.key] ?? item.key}{item.hint ? <span className="ml-2 text-xs text-muted-foreground">{item.hint}</span> : null}</span>
-              <Badge variant={readinessVariant(item.status)}>{item.status === 'ready' ? 'Готово' : item.status === 'missing' ? 'Нет' : item.status === 'awaiting_registration' ? 'Ждёт банк' : item.status}</Badge>
+              <Badge variant={readinessStatusVariant(item.status)}>{readinessStatusLabel(item.status)}</Badge>
             </li>
           ))}
         </ul>
@@ -274,14 +295,14 @@ function SummaryTab({ card }: { card: ProviderCard }) {
             <Row label="Форма собственности" value={sellerKindLabel(seller.kind)} />
             <Row label="ИНН" value={seller.inn} />
             {seller.person ? <Row label="ФИО" value={personName(seller.person)} /> : null}
-            {business ? (
+            {isBusiness ? (
               <>
-                <Row label="Наименование" value={business.legalName} />
-                <Row label={seller.kind === 'company' ? 'ОГРН' : 'ОГРНИП'} value={business.registrationNumber} />
-                {seller.company ? <Row label="КПП" value={seller.company.kpp} /> : null}
-                <Row label="Адрес регистрации" value={business.legalAddress} />
-                <Row label={business.director.position} value={personName(business.director)} />
-                <Row label="Налогообложение" value={`${taxationLabels[business.taxationSystem] ?? business.taxationSystem}, ${vatLabels[business.vatRate] ?? business.vatRate}`} />
+                <Row label="Наименование" value={seller.legalName} />
+                <Row label={seller.kind === 'company' ? 'ОГРН' : 'ОГРНИП'} value={seller.registrationNumber} />
+                {seller.kpp ? <Row label="КПП" value={seller.kpp} /> : null}
+                <Row label="Адрес регистрации" value={seller.legalAddress} />
+                {seller.director ? <Row label={seller.director.position} value={personName(seller.director)} /> : null}
+                <Row label="Налогообложение" value={`${taxationLabels[seller.taxationSystem ?? ''] ?? seller.taxationSystem ?? '—'}, ${vatLabels[seller.vatRate ?? ''] ?? seller.vatRate ?? '—'}`} />
               </>
             ) : <Row label="Налогообложение" value="НПД" />}
           </dl>
@@ -319,14 +340,14 @@ function PayoutTab({
   onRegister,
   onSync,
 }: {
-  card: ProviderCard
-  payout: ProviderPayout | null
+  card: SellerCard
+  payout: SellerPayout | null
   error: string
   busy: boolean
-  onRegister: (overrides: ProviderPayoutOverrides) => Promise<void>
+  onRegister: (overrides: SellerPayoutOverrides) => Promise<void>
   onSync: () => Promise<void>
 }) {
-  const [overrides, setOverrides] = useState<ProviderPayoutOverrides>({})
+  const [overrides, setOverrides] = useState<SellerPayoutOverrides>({})
   if (!payout) {
     return <div className="p-4"><p className="text-sm text-destructive">{error || 'Данные о выплатах недоступны.'}</p></div>
   }
@@ -354,7 +375,6 @@ function PayoutTab({
               <Row label="Корр. счёт" value={details.correspondentAccount} />
             </>
           )}
-          <Row label="Обновлены" value={formatDateTime(details.updatedAt)} />
         </dl>
       </Section>
 
@@ -421,7 +441,149 @@ function PayoutTab({
   )
 }
 
-function MembersTab({ card }: { card: ProviderCard }) {
+/**
+ * The acquirer bindings. The API exposes no way to list existing bindings or destinations, so the
+ * console can only create a binding (which returns its id) and then act on an id it already holds.
+ * Nothing here is reversible from the console — a wrong binding needs the acquirer.
+ */
+function AcquiringTab({ sellerId }: { sellerId: string }) {
+  const { notify } = useNotifications()
+  const [busy, setBusy] = useState(false)
+  const [mode, setMode] = useState<DealBindingMode>('use_existing_deal')
+  const [dealId, setDealId] = useState('')
+  const [createDealWithType, setCreateDealWithType] = useState('')
+  const [binding, setBinding] = useState<DealBinding | null>(null)
+
+  const [destinationId, setDestinationId] = useState('')
+  const [destinationAction, setDestinationAction] = useState<'activate' | 'reject' | 'block'>('activate')
+  const [destinationReason, setDestinationReason] = useState('')
+
+  async function run(label: string, work: () => Promise<unknown>) {
+    setBusy(true)
+    try {
+      await work()
+      notify({ tone: 'success', title: label })
+    } catch (failure) {
+      notify({ tone: 'error', title: 'Эквайринг отклонил запрос', description: failure instanceof Error ? failure.message : undefined })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="grid gap-4 p-4 lg:grid-cols-2">
+      <Section title="Привязка сделки">
+        <p className="mb-3 text-sm text-muted-foreground">
+          Сделка связывает продавца с мультисплит-договором эквайера. Необратимо из консоли — ошибку исправляет эквайер.
+        </p>
+        <div className="grid gap-3">
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">Режим</span>
+            <Select
+              value={mode}
+              onValueChange={(value) => setMode(value)}
+              options={[
+                { value: 'use_existing_deal', label: 'Использовать существующую сделку' },
+                { value: 'create_on_init', label: 'Создать сделку при инициализации' },
+              ]}
+            />
+          </label>
+          {mode === 'use_existing_deal' ? (
+            <label className="grid gap-1 text-sm">
+              <span className="text-muted-foreground">ID сделки</span>
+              <Input value={dealId} onChange={(event) => setDealId(event.target.value)} placeholder="deal id" />
+            </label>
+          ) : (
+            <label className="grid gap-1 text-sm">
+              <span className="text-muted-foreground">Тип создаваемой сделки</span>
+              <Input value={createDealWithType} onChange={(event) => setCreateDealWithType(event.target.value)} placeholder="deal type" />
+            </label>
+          )}
+          <Button
+            type="button"
+            disabled={busy || (mode === 'use_existing_deal' ? !dealId.trim() : !createDealWithType.trim())}
+            onClick={() => void run('Привязка создана', async () => {
+              const command = await postSellerDealBinding(sellerId, {
+                mode,
+                dealId: mode === 'use_existing_deal' ? dealId.trim() : undefined,
+                createDealWithType: mode === 'create_on_init' ? createDealWithType.trim() : undefined,
+              })
+              setBinding(command.dealBinding)
+            })}
+          >
+            Создать привязку
+          </Button>
+        </div>
+
+        {binding ? (
+          <div className="mt-4 border-t pt-3">
+            <dl>
+              <Row label="ID привязки" value={binding.bindingId} />
+              <Row label="Статус" value={binding.status} />
+              <Row label="Сделка" value={binding.dealId ?? '—'} />
+            </dl>
+            <div className="mt-2 flex gap-2">
+              <Button type="button" size="sm" disabled={busy} onClick={() => void run('Привязка активирована', async () => {
+                const command = await postSellerDealBindingAction(sellerId, binding.bindingId, { action: 'activate' })
+                setBinding(command.dealBinding)
+              })}>
+                Активировать
+              </Button>
+              <Button type="button" size="sm" variant="destructive" disabled={busy} onClick={() => void run('Привязка заблокирована', async () => {
+                const command = await postSellerDealBindingAction(sellerId, binding.bindingId, { action: 'block', reasonCode: 'manual_block' })
+                setBinding(command.dealBinding)
+              })}>
+                Заблокировать
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Section>
+
+      <Section title="Действие над точкой выплат">
+        <p className="mb-3 text-sm text-muted-foreground">
+          Требует ID точки выплат. «Отклонить» и «Заблокировать» требуют причину. Необратимо из консоли.
+        </p>
+        <div className="grid gap-3">
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">ID точки выплат</span>
+            <Input value={destinationId} onChange={(event) => setDestinationId(event.target.value)} placeholder="destination id" />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">Действие</span>
+            <Select
+              value={destinationAction}
+              onValueChange={(value) => setDestinationAction(value as 'activate' | 'reject' | 'block')}
+              options={[
+                { value: 'activate', label: 'Активировать' },
+                { value: 'reject', label: 'Отклонить' },
+                { value: 'block', label: 'Заблокировать' },
+              ]}
+            />
+          </label>
+          {destinationAction !== 'activate' ? (
+            <label className="grid gap-1 text-sm">
+              <span className="text-muted-foreground">Причина</span>
+              <Input value={destinationReason} onChange={(event) => setDestinationReason(event.target.value)} placeholder="причина" />
+            </label>
+          ) : null}
+          <Button
+            type="button"
+            disabled={busy || !destinationId.trim() || (destinationAction !== 'activate' && !destinationReason.trim())}
+            onClick={() => void run('Готово', () => postSellerPayoutDestinationAction(sellerId, destinationId.trim(), {
+              action: destinationAction,
+              reasonCode: destinationAction !== 'activate' ? destinationReason.trim() : undefined,
+            }))}
+          >
+            Применить
+          </Button>
+        </div>
+      </Section>
+    </div>
+  )
+}
+
+function MembersTab({ card }: { card: SellerCard }) {
   return (
     <div className="p-4">
       <Section title="Доступы к кабинету">
@@ -430,11 +592,11 @@ function MembersTab({ card }: { card: ProviderCard }) {
             {card.members.map((member) => (
               <li key={member.membershipId} className="flex items-center justify-between gap-3 py-2">
                 <div className="min-w-0">
-                  <strong className="block truncate">{personName(member)}</strong>
-                  <span className="block truncate text-xs text-muted-foreground">{member.phone ?? '—'}{member.email ? ` · ${member.email}` : ''}</span>
+                  <strong className="block truncate">{personName({ surname: member.surname, name: member.name })}</strong>
+                  <span className="block truncate text-xs text-muted-foreground">{member.phone ?? '—'}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={member.role === 'owner' ? 'default' : 'secondary'}>{member.role === 'owner' ? 'Владелец' : member.role === 'manager' ? 'Менеджер' : member.role === 'finance' ? 'Финансы' : 'Сотрудник'}</Badge>
+                  <Badge variant={member.role === 'owner' ? 'default' : 'secondary'}>{memberRoleLabel(member.role)}</Badge>
                   <span className="text-xs text-muted-foreground">{formatDateTime(member.createdAt)}</span>
                 </div>
               </li>
