@@ -35,11 +35,16 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 grid max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden border bg-card text-card-foreground shadow-lg duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+          // Phones: a bottom sheet that fills the width and slides up. Larger screens: a centered card.
+          'fixed z-50 flex flex-col overflow-hidden bg-card text-card-foreground shadow-xl duration-200',
+          'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t',
+          'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+          'sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100%-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:border',
           className,
         )}
         {...props}
       >
+        <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-border sm:hidden" aria-hidden="true" />
         {children}
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -51,7 +56,7 @@ export function DialogHeader({ className, ...props }: ComponentProps<'div'>) {
 }
 
 export function DialogBody({ className, ...props }: ComponentProps<'div'>) {
-  return <div data-slot="dialog-body" className={cn('overflow-y-auto p-3', className)} {...props} />
+  return <div data-slot="dialog-body" className={cn('min-h-0 flex-1 overflow-y-auto p-4', className)} {...props} />
 }
 
 export function DialogFooter({ className, ...props }: ComponentProps<'div'>) {

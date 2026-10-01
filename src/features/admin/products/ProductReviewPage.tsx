@@ -4,7 +4,6 @@ import { Badge, type BadgeProps } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
 import { Textarea } from '../../../components/ui/input'
-import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import { useNotifications } from '../../../components/ui/notifications-context'
 import {
   getProductReviewCard,
@@ -16,6 +15,7 @@ import {
   type ProductStatus,
 } from '../adminApi'
 import { formatDateTime } from '../shared/format'
+import { ListRow, ListScreen } from '../shared/ListRow'
 
 const TABS: Array<{ status: ProductStatus; label: string }> = [
   { status: 'pending_review', label: 'На проверке' },
@@ -82,50 +82,42 @@ export function ProductReviewPage() {
     return () => window.clearTimeout(timer)
   }, [load])
 
-  return (
-    <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col bg-card">
-      <div className="flex flex-wrap items-center gap-3 border-b px-3 py-2">
-        <div className="flex gap-1" role="tablist">
-          {TABS.map((tab) => (
-            <Button key={tab.status} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => setStatus(tab.status)}>
-              {tab.label}
-            </Button>
-          ))}
-        </div>
-        <Button type="button" variant="ghost" size="icon" className="ml-auto" onClick={() => void load()} aria-label="Обновить" title="Обновить">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
-        </Button>
+  const toolbar = (
+    <div className="flex items-center gap-2 p-2 sm:p-3">
+      <div className="no-scrollbar -mx-2 flex flex-1 gap-1 overflow-x-auto px-2 sm:mx-0 sm:px-0" role="tablist">
+        {TABS.map((tab) => (
+          <Button key={tab.status} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => setStatus(tab.status)} className="shrink-0">
+            {tab.label}
+          </Button>
+        ))}
       </div>
-      {error ? <p className="border-b px-3 py-2 text-sm font-medium text-destructive">{error}</p> : null}
-      <TableFrame>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[40%]">Карточка</TableHead>
-              <TableHead className="w-[28%]">Продавец</TableHead>
-              <TableHead className="w-[16%]">Статус</TableHead>
-              <TableHead className="w-[16%]">Подана</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && rows.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">Загружаем…</TableCell></TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">Карточек нет.</TableCell></TableRow>
-            ) : rows.map((row) => (
-              <TableRow key={row.productId} className="cursor-pointer" onClick={() => setOpenProductId(row.productId)}>
-                <TableCell>
-                  <strong className="block truncate text-sm font-medium">{row.title}</strong>
-                  <small className="block truncate text-xs text-muted-foreground">{row.productId}</small>
-                </TableCell>
-                <TableCell className="text-sm">{row.sellerDisplayName}</TableCell>
-                <TableCell><Badge variant={productStatusVariant(row.status)}>{productStatusLabel(row.status)}</Badge></TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDateTime(row.submittedAt)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableFrame>
+      <Button type="button" variant="outline" size="icon" onClick={() => void load()} aria-label="Обновить" title="Обновить">
+        <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
+      </Button>
+    </div>
+  )
+
+  return (
+    <>
+      <ListScreen toolbar={toolbar} error={error}>
+        {loading && rows.length === 0 ? (
+          <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
+        ) : rows.length === 0 ? (
+          <li className="py-12 text-center text-sm text-muted-foreground">Карточек нет.</li>
+        ) : rows.map((row) => (
+          <li key={row.productId}>
+            <ListRow
+              onClick={() => setOpenProductId(row.productId)}
+              title={row.title}
+              badges={<Badge variant={productStatusVariant(row.status)}>{productStatusLabel(row.status)}</Badge>}
+              fields={[
+                { label: 'Продавец', value: row.sellerDisplayName },
+                { label: 'Подана', value: formatDateTime(row.submittedAt) },
+              ]}
+            />
+          </li>
+        ))}
+      </ListScreen>
 
       {openProductId ? (
         <ProductReviewModal
@@ -134,7 +126,7 @@ export function ProductReviewPage() {
           onDecided={() => { setOpenProductId(null); void load() }}
         />
       ) : null}
-    </section>
+    </>
   )
 }
 
@@ -186,10 +178,10 @@ function ProductReviewModal({ productId, onClose, onDecided }: { productId: stri
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
-      <DialogContent className="max-w-[860px]">
+      <DialogContent className="sm:max-w-[860px]">
         <DialogHeader>
           <div className="min-w-0">
-            <DialogTitle className="truncate text-xl font-semibold">{card?.title ?? 'Карточка'}</DialogTitle>
+            <DialogTitle className="truncate">{card?.title ?? 'Карточка'}</DialogTitle>
             <span className="block truncate text-sm text-muted-foreground">{card ? card.sellerDisplayName : productId}</span>
           </div>
           <Button type="button" variant="ghost" size="icon" onClick={onClose} aria-label="Закрыть"><X size={16} /></Button>
@@ -206,9 +198,9 @@ function ProductReviewModal({ productId, onClose, onDecided }: { productId: stri
 
               <section>
                 <h3 className="mb-2 text-sm font-semibold">Разделы карточки</h3>
-                <ul className="divide-y rounded-sm border text-sm">
+                <ul className="divide-y rounded-lg border text-sm">
                   {card.sections.map((section) => (
-                    <li key={section.key} className="flex items-start justify-between gap-3 px-3 py-2">
+                    <li key={section.key} className="flex items-start justify-between gap-3 px-3 py-2.5">
                       <div className="min-w-0">
                         <span className="flex items-center gap-2">
                           {section.isComplete
@@ -249,6 +241,7 @@ function ProductReviewModal({ productId, onClose, onDecided }: { productId: stri
               <Button
                 key={item.action}
                 type="button"
+                className="flex-1 sm:flex-none"
                 variant={item.tone === 'destructive' ? 'destructive' : item.tone === 'outline' ? 'outline' : 'default'}
                 disabled={busy}
                 onClick={() => (item.needsMessage ? setPending(item.action) : void apply(item.action))}
@@ -261,7 +254,7 @@ function ProductReviewModal({ productId, onClose, onDecided }: { productId: stri
 
         {pendingAction ? (
           <Dialog open onOpenChange={(open) => { if (!open) setPending(null) }}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="sm:max-w-lg">
               <DialogHeader><DialogTitle>{pendingAction.label}</DialogTitle></DialogHeader>
               <DialogBody className="grid gap-3">
                 <p className="text-sm text-muted-foreground">Сообщение увидит продавец. Напишите, что именно не так с карточкой.</p>

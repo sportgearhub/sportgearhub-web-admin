@@ -175,14 +175,14 @@ export function SellerCardPage({ sellerId, onBack, onTopBarContentChange }: Sell
 
   return (
     <section className="min-h-[calc(100vh-3.5rem)] bg-background">
-      <div className="flex flex-wrap items-center gap-2 border-b bg-card px-4 py-2">
-        <div className="flex gap-1" role="tablist">
+      <div className="sticky top-14 z-20 flex flex-col gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
+        <div className="no-scrollbar -mx-3 flex gap-1 overflow-x-auto px-3 sm:mx-0 sm:px-0" role="tablist">
           {([['summary', 'Обзор'], ['payout', 'Выплаты'], ['acquiring', 'Эквайринг'], ['members', 'Доступы']] as Array<[Tab, string]>).map(([id, label]) => (
-            <Button key={id} type="button" size="sm" variant={tab === id ? 'secondary' : 'ghost'} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</Button>
+            <Button key={id} type="button" size="sm" variant={tab === id ? 'secondary' : 'ghost'} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="shrink-0">{label}</Button>
           ))}
         </div>
         {available.length > 0 ? (
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="no-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:ml-auto sm:flex-wrap sm:px-0">
             {available.map((item) => (
               <Button
                 key={item.action}

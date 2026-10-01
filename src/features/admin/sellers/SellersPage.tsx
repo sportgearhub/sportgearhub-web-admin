@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Search } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
-import { Table, TableBody, TableCell, TableFrame, TableHead, TableHeader, TableRow } from '../../../components/ui/table'
 import { getSellers, type SellerListItem, type SellerStatus } from '../adminApi'
 import { formatDateTime } from '../shared/format'
+import { ListRow, ListScreen } from '../shared/ListRow'
 import { sellerKindLabel, sellerStatusLabel, sellerStatusVariant } from './sellerLabels'
 
 const ONBOARDING_TABS: Array<{ status: SellerStatus; label: string }> = [
   { status: 'pending_review', label: 'На проверке' },
   { status: 'changes_requested', label: 'Нужны изменения' },
   { status: 'rejected', label: 'Отклонённые' },
+]
+
+const ALL_TABS: Array<{ status: SellerStatus | ''; label: string }> = [
+  { status: '', label: 'Все' },
+  { status: 'active', label: 'Активные' },
+  { status: 'draft', label: 'Черновики' },
+  { status: 'suspended', label: 'Приостановленные' },
 ]
 
 type SellersPageProps = {
@@ -26,6 +33,7 @@ export function SellersPage({ mode, onOpenSeller }: SellersPageProps) {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const tabs = mode === 'onboarding' ? ONBOARDING_TABS : ALL_TABS
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -51,73 +59,55 @@ export function SellersPage({ mode, onOpenSeller }: SellersPageProps) {
     return rows.filter((row) => [row.displayName, row.legalName, row.inn, row.sellerId].some((value) => value?.toLowerCase().includes(needle)))
   }, [rows, query])
 
-  return (
-    <section className="flex min-h-[calc(100vh-3.5rem)] min-w-0 flex-col bg-card">
-      <div className="flex flex-wrap items-center gap-3 border-b px-3 py-2">
-        {mode === 'onboarding' ? (
-          <div className="flex gap-1" role="tablist">
-            {ONBOARDING_TABS.map((tab) => (
-              <Button key={tab.status} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => setStatus(tab.status)}>
-                {tab.label}
-              </Button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex gap-1" role="tablist">
-            <Button type="button" size="sm" variant={status === '' ? 'secondary' : 'ghost'} onClick={() => setStatus('')}>Все</Button>
-            <Button type="button" size="sm" variant={status === 'active' ? 'secondary' : 'ghost'} onClick={() => setStatus('active')}>Активные</Button>
-            <Button type="button" size="sm" variant={status === 'draft' ? 'secondary' : 'ghost'} onClick={() => setStatus('draft')}>Черновики</Button>
-            <Button type="button" size="sm" variant={status === 'suspended' ? 'secondary' : 'ghost'} onClick={() => setStatus('suspended')}>Приостановленные</Button>
-          </div>
-        )}
-        <Input className="ml-auto max-w-xs" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название, ИНН, юрлицо" aria-label="Поиск" />
-        <Button type="button" variant="ghost" size="icon" onClick={() => void load()} aria-label="Обновить" title="Обновить">
+  const toolbar = (
+    <div className="flex flex-col gap-2 p-2 sm:flex-row sm:flex-wrap sm:items-center sm:p-3">
+      <div className="no-scrollbar -mx-2 flex gap-1 overflow-x-auto px-2 sm:mx-0 sm:px-0" role="tablist">
+        {tabs.map((tab) => (
+          <Button key={tab.label} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => setStatus(tab.status)} className="shrink-0">
+            {tab.label}
+          </Button>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 sm:ml-auto">
+        <div className="relative flex-1 sm:w-64 sm:flex-none">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input className="pl-8" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название, ИНН, юрлицо" aria-label="Поиск" />
+        </div>
+        <Button type="button" variant="outline" size="icon" onClick={() => void load()} aria-label="Обновить" title="Обновить">
           <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
         </Button>
       </div>
-      {error ? <p className="border-b px-3 py-2 text-sm font-medium text-destructive">{error}</p> : null}
-      <TableFrame>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[28%]">Кабинет</TableHead>
-              <TableHead className="w-[12%]">Статус</TableHead>
-              <TableHead className="w-[12%]">Форма</TableHead>
-              <TableHead className="w-[22%]">Юрлицо · ИНН</TableHead>
-              <TableHead className="w-[10%]">Договор</TableHead>
-              <TableHead className="w-[10%]">Выплаты</TableHead>
-              <TableHead className="w-[6%]">{mode === 'onboarding' ? 'Ждёт с' : 'Обновлён'}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && rows.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">Загружаем…</TableCell></TableRow>
-            ) : visible.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">{mode === 'onboarding' ? 'Заявок нет.' : 'Продавцов нет.'}</TableCell></TableRow>
-            ) : visible.map((row) => (
-              <TableRow key={row.sellerId} className="cursor-pointer" onClick={() => onOpenSeller(row.sellerId)}>
-                <TableCell>
-                  <strong className="block truncate text-sm font-medium">{row.displayName}</strong>
-                  <small className="block truncate text-xs text-muted-foreground">{row.sellerId}</small>
-                </TableCell>
-                <TableCell><Badge variant={sellerStatusVariant(row.status)}>{sellerStatusLabel(row.status)}</Badge></TableCell>
-                <TableCell className="text-sm">{sellerKindLabel(row.sellerKind)}</TableCell>
-                <TableCell>
-                  <span className="block truncate text-sm">{row.legalName ?? '—'}</span>
-                  <small className="block text-xs text-muted-foreground">{row.inn ?? 'ИНН не указан'}</small>
-                </TableCell>
-                <TableCell className="text-sm">{row.agreementNumber ? `№ ${row.agreementNumber}` : '—'}</TableCell>
-                <TableCell>
-                  <Badge variant={row.canBePaid ? 'success' : row.payoutRegistered ? 'info' : row.payoutDetailsPresent ? 'warning' : 'secondary'}>
-                    {row.canBePaid ? 'Готовы' : row.payoutRegistered ? 'В банке' : row.payoutDetailsPresent ? 'Ждут банк' : 'Нет'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">{formatDateTime(row.reviewOpenedAt ?? row.updatedAt)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableFrame>
-    </section>
+    </div>
+  )
+
+  return (
+    <ListScreen toolbar={toolbar} error={error}>
+      {loading && rows.length === 0 ? (
+        <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
+      ) : visible.length === 0 ? (
+        <li className="py-12 text-center text-sm text-muted-foreground">{mode === 'onboarding' ? 'Заявок нет.' : 'Продавцов нет.'}</li>
+      ) : visible.map((row) => (
+        <li key={row.sellerId}>
+          <ListRow
+            onClick={() => onOpenSeller(row.sellerId)}
+            title={row.displayName}
+            badges={
+              <>
+                <Badge variant={sellerStatusVariant(row.status)}>{sellerStatusLabel(row.status)}</Badge>
+                <Badge variant={row.canBePaid ? 'success' : row.payoutRegistered ? 'info' : row.payoutDetailsPresent ? 'warning' : 'secondary'}>
+                  {row.canBePaid ? 'Выплаты готовы' : row.payoutRegistered ? 'В банке' : row.payoutDetailsPresent ? 'Ждут банк' : 'Нет выплат'}
+                </Badge>
+              </>
+            }
+            fields={[
+              { label: 'Форма', value: sellerKindLabel(row.sellerKind) },
+              { label: 'Юрлицо · ИНН', value: `${row.legalName ?? '—'}${row.inn ? ` · ${row.inn}` : ''}` },
+              { label: 'Договор', value: row.agreementNumber ? `№ ${row.agreementNumber}` : '—' },
+              { label: mode === 'onboarding' ? 'Ждёт с' : 'Обновлён', value: formatDateTime(row.reviewOpenedAt ?? row.updatedAt) },
+            ]}
+          />
+        </li>
+      ))}
+    </ListScreen>
   )
 }

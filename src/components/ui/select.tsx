@@ -49,7 +49,7 @@ export function Select({
         autoFocus={autoFocus}
         aria-label={ariaLabel}
         className={cn(
-          'border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-sm border px-2 py-1 text-sm outline-none transition-[color,box-shadow] focus-visible:ring-[2px] disabled:cursor-not-allowed disabled:opacity-50',
+          'border-input bg-card text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border px-3 py-1 text-sm outline-none transition-[color,box-shadow] focus-visible:ring-[2px] disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
       >

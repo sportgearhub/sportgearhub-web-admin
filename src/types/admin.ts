@@ -1,8 +1,13 @@
+import type { ComponentType } from 'react'
+
 export type AdminSectionId = 'overview' | 'onboarding' | 'products' | 'sellers' | 'finance' | 'users' | 'catalog'
+
+export type NavIcon = ComponentType<{ size?: number | string; className?: string }>
 
 export type NavItem = {
   id: AdminSectionId
   label: string
+  icon: NavIcon
 }
 
 export type NavGroup = {

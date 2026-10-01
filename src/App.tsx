@@ -184,6 +184,7 @@ function App() {
           onOpenOnboarding={() => navigateTo(SECTION_PATHS.onboarding)}
           onOpenSellers={() => navigateTo(SECTION_PATHS.sellers)}
           onOpenProducts={() => navigateTo(SECTION_PATHS.products)}
+          onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)}
         />
       ) : section === 'onboarding' ? (
         <SellersPage mode="onboarding" onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)} />
