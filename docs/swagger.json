@@ -1012,6 +1012,191 @@
         ]
       }
     },
+    "/internal/settlements": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalSettlementsEndpoint",
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "guid",
+              "nullable": true
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfSettlementPlanResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/payouts": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalPayoutsEndpoint",
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "guid",
+              "nullable": true
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfInternalPayoutSummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/payouts/{payout_execution_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalPayoutEndpoint",
+        "parameters": [
+          {
+            "name": "payout_execution_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSettlementsInternalPayoutSummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
     "/internal/bookings/{booking_id}/payout": {
       "post": {
         "tags": [
@@ -2731,6 +2916,118 @@
           }
         ]
       }
+    },
+    "/internal/bookings": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalBookingsGetInternalBookingsEndpoint",
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "guid",
+              "nullable": true
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfInternalBookingSummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/bookings/{booking_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalBookingsGetInternalBookingEndpoint",
+        "parameters": [
+          {
+            "name": "booking_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3830,6 +4127,105 @@
         }
       },
       "EbashITSportgearhubApiEndpointsInternalSettlementsGetSettlementPlanRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RsqlParserNetLinqRsqlPagedResultOfSettlementPlanResponse": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSettlementsSettlementPlanResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalSettlementsRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RsqlParserNetLinqRsqlPagedResultOfInternalPayoutSummaryResponse": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSettlementsInternalPayoutSummaryResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalSettlementsInternalPayoutSummaryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "payout": {
+            "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSettlementsPayoutExecutionResponse"
+          },
+          "seller": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingSellerModel"
+              }
+            ]
+          },
+          "booking_id": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "booking_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "settlement_status": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingSellerModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "seller_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "display_name": {
+            "type": "string"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalPayoutsRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalPayoutRequest": {
         "type": "object",
         "additionalProperties": false
       },
@@ -6170,6 +6566,394 @@
             "nullable": true
           }
         }
+      },
+      "RsqlParserNetLinqRsqlPagedResultOfInternalBookingSummaryResponse": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingSummaryResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingSummaryResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "booking_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "booking_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "customer": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingCustomerModel"
+              }
+            ]
+          },
+          "seller": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingSellerModel"
+              }
+            ]
+          },
+          "product": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingProductModel"
+              }
+            ]
+          },
+          "start_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_price": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "total_charge_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "payment_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "settlement_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingCustomerModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingProductModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "category_title": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalBookingsGetInternalBookingsRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingDetailResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "booking_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "booking_number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "customer": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingCustomerModel"
+              }
+            ]
+          },
+          "seller": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingSellerModel"
+              }
+            ]
+          },
+          "product": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingProductModel"
+              }
+            ]
+          },
+          "start_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total_price": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "prepaid_service_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "deposit_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "total_charge_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "cancelled_by_user_id": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "payment": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingPaymentModel"
+              }
+            ]
+          },
+          "settlement": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingSettlementModel"
+              }
+            ]
+          },
+          "fulfillment": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingFulfillmentModel"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingPaymentModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "payment_intent_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "payment_status": {
+            "type": "string"
+          },
+          "external_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "external_payment_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "deal_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "amount_minor_units": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paid_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "failed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "refunded_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingSettlementModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "settlement_plan_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "outcome_type": {
+            "type": "string"
+          },
+          "gross_collected_amount": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "seller_payout_amount": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "platform_commission_amount": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "acquiring_fee_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "payout_fee_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "platform_net_amount": {
+            "type": "number",
+            "format": "decimal",
+            "nullable": true
+          },
+          "payout_execution_id": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "executed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalBookingFulfillmentModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "handed_over_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "returned_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "has_issue": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalBookingsGetInternalBookingRequest": {
+        "type": "object",
+        "additionalProperties": false
       }
     },
     "securitySchemes": {

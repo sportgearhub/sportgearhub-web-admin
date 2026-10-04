@@ -872,6 +872,118 @@ export function getLedgerForPayment(paymentId: string) {
 }
 
 
+// ═══ Bookings, settlements and payouts — searchable lists ═════════════════════════════════════
+// `seller_id` is a separate query param on all three (scoping a booking/payout/settlement by seller
+// is an EXISTS over cards/plans, not a condition on the row's own columns), alongside RSQL filter/sort.
+
+export type BookingSeller = { sellerId: string; displayName: string }
+export type BookingCustomer = { userId: string; name: string | null; email: string | null; phone: string | null }
+export type BookingProduct = { productId: string; title: string; categoryTitle: string | null }
+
+export type BookingPayment = {
+  paymentIntentId: string
+  paymentStatus: string
+  externalStatus: string | null
+  externalPaymentId: string | null
+  dealId: string | null
+  amountMinorUnits: number
+  paidAt: string | null
+  failedAt: string | null
+  cancelledAt: string | null
+  refundedAt: string | null
+}
+
+export type BookingSettlement = {
+  settlementPlanId: string
+  status: string
+  outcomeType: string
+  grossCollectedAmount: number
+  sellerPayoutAmount: number
+  platformCommissionAmount: number
+  acquiringFeeAmount: number
+  payoutFeeAmount: number
+  platformNetAmount: number
+  payoutExecutionId: string | null
+  executedAt: string | null
+}
+
+export type BookingFulfillment = {
+  handedOverAt: string | null
+  returnedAt: string | null
+  completedAt: string | null
+  hasIssue: boolean
+}
+
+export type BookingSummary = {
+  bookingId: string
+  bookingNumber: string
+  status: string
+  customer: BookingCustomer | null
+  seller: BookingSeller | null
+  product: BookingProduct | null
+  startAt: string
+  endAt: string
+  quantity: number
+  totalPrice: number
+  totalChargeAmount: number
+  paymentStatus: string
+  settlementStatus: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type BookingDetail = {
+  bookingId: string
+  bookingNumber: string
+  status: string
+  customer: BookingCustomer | null
+  seller: BookingSeller | null
+  product: BookingProduct | null
+  startAt: string
+  endAt: string
+  quantity: number
+  totalPrice: number
+  prepaidServiceAmount: number
+  depositAmount: number
+  totalChargeAmount: number
+  cancelledByUserId: string | null
+  cancelledAt: string | null
+  payment: BookingPayment | null
+  settlement: BookingSettlement | null
+  fulfillment: BookingFulfillment | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type PayoutSummary = {
+  payout: PayoutExecution
+  seller: BookingSeller | null
+  bookingId: string | null
+  bookingNumber: string | null
+  settlementStatus: string | null
+}
+
+export function getBookings(params: ListQueryParams = {}, sellerId?: string) {
+  return requestJson<PagedResult<BookingSummary>>(`/internal/bookings${listQuery(params, sellerId ? { seller_id: sellerId } : undefined)}`)
+}
+
+export function getBooking(bookingId: string) {
+  return requestJson<BookingDetail>(`/internal/bookings/${id(bookingId)}`)
+}
+
+export function getSettlements(params: ListQueryParams = {}, sellerId?: string) {
+  return requestJson<PagedResult<SettlementPlan>>(`/internal/settlements${listQuery(params, sellerId ? { seller_id: sellerId } : undefined)}`)
+}
+
+export function getPayouts(params: ListQueryParams = {}, sellerId?: string) {
+  return requestJson<PagedResult<PayoutSummary>>(`/internal/payouts${listQuery(params, sellerId ? { seller_id: sellerId } : undefined)}`)
+}
+
+export function getPayout(payoutExecutionId: string) {
+  return requestJson<PayoutSummary>(`/internal/payouts/${id(payoutExecutionId)}`)
+}
+
+
 // ═══ Catalogue schema (equipment categories, attributes, bindings) ════════════════════════════
 
 export type TaxonomyStatus = 'active' | 'archived' | (string & {})

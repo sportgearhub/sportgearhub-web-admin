@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
@@ -27,6 +27,10 @@ import {
   type SettlementPlan,
 } from '../adminApi'
 import { formatDateTime, formatKopecks, formatRubles } from '../shared/format'
+import { BookingsList } from './BookingsList'
+import { PayoutsList } from './PayoutsList'
+import { SettlementsList } from './SettlementsList'
+import { Row, Section } from './FinancePanels'
 
 type Lookup = 'payment' | 'booking'
 
@@ -38,33 +42,47 @@ type Loaded = {
   ledger: LedgerView | null
 }
 
-function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
-  return (
-    <section className="panel">
-      <div className="panel-header">
-        <h2>{title}</h2>
-        {aside}
-      </div>
-      {children}
-    </section>
-  )
-}
+type LookupSeed = { lookup: Lookup; value: string }
+type FinanceTab = 'bookings' | 'settlements' | 'payouts' | 'lookup'
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
+const FINANCE_TABS: Array<{ id: FinanceTab; label: string }> = [
+  { id: 'bookings', label: 'Брони' },
+  { id: 'settlements', label: 'Расчёты' },
+  { id: 'payouts', label: 'Выплаты' },
+  { id: 'lookup', label: 'Поиск платежа' },
+]
+
+/** Finance is a few lists over one money model, plus the by-id lookup that can run guarded actions. */
+export function FinancePage() {
+  const [tab, setTab] = useState<FinanceTab>('bookings')
+  const [seed, setSeed] = useState<LookupSeed | undefined>(undefined)
+
+  function openPaymentForBooking(bookingId: string) {
+    setSeed({ lookup: 'booking', value: bookingId })
+    setTab('lookup')
+  }
+
   return (
-    <div className="grid gap-1 border-b py-2 text-sm last:border-b-0 sm:grid-cols-[220px_1fr] sm:gap-4">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words">{value ?? '—'}</dd>
-    </div>
+    <section className="min-h-[calc(100dvh-3.5rem)]">
+      <div className="no-scrollbar sticky top-14 z-20 flex gap-1 overflow-x-auto border-b bg-card/95 px-2 py-2 backdrop-blur sm:px-3" role="tablist">
+        {FINANCE_TABS.map((item) => (
+          <Button key={item.id} type="button" size="sm" variant={tab === item.id ? 'secondary' : 'ghost'} role="tab" aria-selected={tab === item.id} onClick={() => setTab(item.id)} className="shrink-0">{item.label}</Button>
+        ))}
+      </div>
+      {tab === 'bookings' ? <BookingsList onOpenPayment={openPaymentForBooking} /> : null}
+      {tab === 'settlements' ? <SettlementsList /> : null}
+      {tab === 'payouts' ? <PayoutsList /> : null}
+      {tab === 'lookup' ? <PaymentLookup seed={seed} /> : null}
+    </section>
   )
 }
 
 /**
  * The console's window onto the money: look a payment or booking up, read the acquirer's facts and
  * the ledger, and run the few write actions the API guards — sync, cancel, refund (impact first),
- * and a manual payout. The API has no list here, so everything starts from an id.
+ * and a manual payout. A `seed` lets another tab hand a booking id straight in.
  */
-export function FinancePage() {
+function PaymentLookup({ seed }: { seed?: LookupSeed }) {
   const { notify } = useNotifications()
   const [lookup, setLookup] = useState<Lookup>('payment')
   const [value, setValue] = useState('')
@@ -96,13 +114,13 @@ export function FinancePage() {
     return { detail, status, refund, ledger, settlement }
   }
 
-  async function run() {
-    const trimmed = value.trim()
+  async function runWith(nextLookup: Lookup, nextValue: string) {
+    const trimmed = nextValue.trim()
     if (!trimmed) return
     setLoading(true)
     setError('')
     try {
-      setData(await (lookup === 'payment' ? loadByPaymentId(trimmed) : loadByBookingId(trimmed)))
+      setData(await (nextLookup === 'payment' ? loadByPaymentId(trimmed) : loadByBookingId(trimmed)))
     } catch (failure) {
       setData(null)
       setError(failure instanceof Error ? failure.message : 'Не удалось загрузить')
@@ -110,6 +128,23 @@ export function FinancePage() {
       setLoading(false)
     }
   }
+
+  function run() {
+    void runWith(lookup, value)
+  }
+
+  // A booking id handed in from another tab runs the lookup once; deferred so the state writes do not
+  // land synchronously inside the effect.
+  useEffect(() => {
+    if (!seed) return
+    const timer = window.setTimeout(() => {
+      setLookup(seed.lookup)
+      setValue(seed.value)
+      void runWith(seed.lookup, seed.value)
+    }, 0)
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed])
 
   async function reload() {
     if (!data) return

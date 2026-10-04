@@ -52,6 +52,12 @@ POST /internal/products/{product_id}/actions
 `{ items, pagination }`, oldest first, `status` defaulting to `pending_review`. It used to return the
 whole queue — which is longest on exactly the day you are most behind.
 
+It also takes `filter` and `sort` (RSQL), and **until 2026-10-04 it did not** — both were documented
+in the spec and silently dropped, so a console that sent them saw unchanged results. Filterable:
+`product_id`, `seller_id`, `title`, `status`, `quantity`, `group_name`, `category_id`, `created_at`,
+`updated_at`. `seller_id` is here and not on the seller's own list, because you are the one looking
+across sellers. The same fix landed on `/internal/sellers/review-queue`.
+
 ```json
 POST /internal/products/{product_id}/actions
 { "action": "request_changes", "message": "На фотографии другой велосипед." }
@@ -113,6 +119,48 @@ it on a live attribute will not reinterpret stored values — treat it as create
 
 ---
 
+## Bookings
+
+```
+GET /internal/bookings?filter=…&sort=…&page=1&pageSize=20
+GET /internal/bookings/{booking_id}
+```
+
+**Neither existed until 2026-10-04.** You could read a booking's payment, its refund case and its
+ledger entries — and only if you already knew the booking id. There was no way to list bookings or
+find one, though both the customer and the seller have had their own lists all along. Repairing three
+stuck bookings in production had to be done in `psql`.
+
+The list answers `{ items, pagination }`, newest first, and each row carries what you need to pick
+the right booking without opening it: the customer, **the seller**, the product, the money, and the
+current `payment_status` and `settlement_status`.
+
+| Filterable | |
+|---|---|
+| `booking_id`, `booking_number` | identity |
+| `status` | the booking's own status |
+| `user_id`, `product_id` | who and what |
+| `start_at`, `end_at`, `quantity` | the rental |
+| `total_price`, `total_charge_amount` | money |
+| `cancelled_at`, `created_at`, `updated_at` | time |
+
+`seller_id` is **not** a filter — it is a separate query parameter, applied before the filter:
+
+```
+GET /internal/bookings?seller_id=29ae2a65-…&filter=status==confirmed
+```
+
+The reason is structural, not cautious: a booking does not carry a seller, it points at a card. Scoping
+by seller is an `EXISTS` over cards, which is a different thing from a condition on the booking's own
+columns, and mixing the two into one `filter` would promise an ordering the index cannot give.
+
+`GET /internal/bookings/{booking_id}` returns one booking whole — customer, seller, product, the full
+money breakdown, and the payment, settlement and fulfilment state together rather than behind three
+more requests. The question you arrive with is "which step did this stall on", and that answer is
+assembled from all three.
+
+---
+
 ## Payments
 
 ```
@@ -159,15 +207,103 @@ against a paid-out booking creates a debt, and nothing in the API collects it fo
 ```
 GET /internal/ledger/bookings/{booking_id}
 GET /internal/ledger/payments/{payment_id}
+GET /internal/settlements?filter=…&sort=…&seller_id=…
 GET /internal/settlements/{settlement_plan_id}
 ```
 
 Read-only. The ledger is the audit trail — every movement with its cause. Use it to answer "where did
 this money go", not to compute balances yourself.
 
+**The settlements list is new as of 2026-10-04.** Before it, a plan could only be opened by id — so
+the platform's money was readable one row at a time and not enumerable at all.
+
+Filterable: `settlement_plan_id`, `booking_id`, `payment_intent_id`, `seller_id`, `deal_id`,
+`outcome_type`, `status`, `gross_collected_amount`, `seller_payout_amount`,
+`platform_commission_amount`, `payout_execution_id`, `created_at`, `updated_at`, `executed_at`.
+
+The amounts are filterable on purpose — "which settlements owe a seller more than ten thousand" is an
+ordinary question and should not be answered by paging:
+
+```
+GET /internal/settlements?filter=status==planned;seller_payout_amount=gt=10000&sort=-created_at
+```
+
+Each row carries the recipient snapshot (bank account **masked**) and the payout execution inline when
+one exists, so the list answers "was this paid" without a second request per row.
+
+> `outcome_type` is written once, when the plan is created, and describes the booking as it was at
+> that moment. A plan made while a booking was still `confirmed` reads
+> `operator_accepted_pending_fulfillment` forever, even after the rental completes. It is history, not
+> current state, and it does not affect the payout: the amount branches only on `cancelled`.
+
 ---
 
-## Payouts and bank binding
+## Payout executions
+
+```
+GET /internal/payouts?filter=…&sort=…&seller_id=…
+GET /internal/payouts/{payout_execution_id}
+```
+
+**`payout_executions` had no read endpoint at all until 2026-10-04.** `POST
+/internal/bookings/{booking_id}/payout` created one and nothing could read one back — so the table
+holding the actual movement of money was entirely invisible from outside, and "did this seller get
+paid" was not an answerable question.
+
+The question this list exists for is *what did not go out*:
+
+```
+GET /internal/payouts?filter=status==failed&sort=-created_at
+```
+
+Filterable: `payout_execution_id`, `settlement_plan_id`, `deal_id`, `status`, `amount`,
+`external_payout_ref`, `created_at`, `updated_at`, `submitted_at`, `paid_at`, `failed_at`.
+
+Each row nests the payout itself and adds **the seller and the booking number** beside it. A payout
+carries neither — it points at a settlement plan — and without them a row is not something you can
+act on.
+
+`seller_id` is a query parameter rather than a filter field, for the same structural reason as on
+bookings: scoping by seller is an `EXISTS` over settlement plans, not a condition on a payout column.
+
+---
+
+## Fiscal receipts (54-FZ, ATOL)
+
+There is **no endpoint for these yet** — this section exists so you know the table is there and what
+it means when a receipt is stuck.
+
+A `payments.fiscal_receipts` row is written in the same transaction as the payment transition that
+caused it: `captured` → a «Приход» receipt, `refunded` / `partially_refunded` → «Возврат прихода». A
+worker then registers it with ATOL and polls for the fiscal result.
+
+| `status` | Means |
+|---|---|
+| `Pending` | Queued, not sent. Normal for seconds — **or forever, if ATOL credentials are unset** |
+| `Registered` | ATOL accepted it, `uuid` assigned, fiscal result not back yet |
+| `Done` | Fiscalized: `fiscal_document_number`, `fiscal_sign` and `ofd_receipt_url` are filled |
+| `Failed` | Rejected, or retries exhausted — **needs a human** |
+
+`Failed` is the one that matters. The reason is in `error` verbatim from ATOL, and the row is not
+retried again. Two causes worth recognising:
+
+- **`validation.failed` about the ИНН** — the supplier attributes came from a seller's legal data and
+  ATOL rejected them. The receipt cannot be fixed by retrying; the seller's data has to be corrected
+  and the receipt reissued.
+- **A receipt that stayed `Pending` across a deploy** — fiscalization is simply not configured.
+  Nothing is lost; it registers once credentials are set.
+
+> **Receipts are issued only when ATOL credentials are configured.** Until then every row sits at
+> `Pending`. This is intentional: a receipt is a tax document. Nothing accumulates incorrectly — the
+> queue drains in order once it is switched on.
+
+A receipt is **tracking only**. The legal document lives at ATOL and the OFD; `ofd_receipt_url` is
+the customer-facing copy. Do not treat this table as the record of what was fiscalized — treat it as
+the record of whether we managed to.
+
+---
+
+## Payout destinations and bank binding
 
 ```
 GET  /internal/sellers/{seller_id}/payout
