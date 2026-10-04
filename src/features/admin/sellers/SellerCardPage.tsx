@@ -258,7 +258,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid gap-1 border-b py-2 text-sm last:border-b-0 sm:grid-cols-[200px_1fr] sm:gap-4">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words">{value ?? '—'}</dd>
+      <dd className="min-w-0 whitespace-pre-line break-words">{value ?? '—'}</dd>
     </div>
   )
 }
@@ -322,7 +322,7 @@ function SummaryTab({ card }: { card: SellerCard }) {
                   <span className="font-medium">{review.verdict === 'approved' ? 'Одобрено' : review.verdict === 'changes_requested' ? 'Запрошены изменения' : review.verdict === 'rejected' ? 'Отклонено' : review.verdict ?? 'На проверке'}</span>
                   <span className="text-xs text-muted-foreground">{formatDateTime(review.decidedAt ?? review.openedAt)}</span>
                 </div>
-                {review.message ? <p className="mt-1 text-muted-foreground">{review.message}</p> : null}
+                {review.message ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{review.message}</p> : null}
               </li>
             ))}
           </ul>

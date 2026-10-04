@@ -207,7 +207,7 @@ function ProductReviewModal({ productId, onClose, onDecided }: { productId: stri
                 <Badge variant={productStatusVariant(card.status)}>{productStatusLabel(card.status)}</Badge>
                 <span className="text-muted-foreground">Количество: {card.quantity}</span>
               </div>
-              {card.description ? <p className="text-sm">{card.description}</p> : null}
+              {card.description ? <p className="whitespace-pre-line text-sm">{card.description}</p> : null}
 
               <section>
                 <h3 className="mb-2 text-sm font-semibold">Разделы карточки</h3>
@@ -239,7 +239,7 @@ function ProductReviewModal({ productId, onClose, onDecided }: { productId: stri
                           <span className="font-medium">{review.verdict === 'approved' ? 'Одобрено' : review.verdict === 'changes_requested' ? 'Запрошены изменения' : review.verdict === 'rejected' ? 'Отклонено' : review.verdict ?? 'На проверке'}</span>
                           <span className="text-xs text-muted-foreground">{formatDateTime(review.decidedAt ?? review.openedAt)}</span>
                         </div>
-                        {review.message ? <p className="mt-1 text-muted-foreground">{review.message}</p> : null}
+                        {review.message ? <p className="mt-1 whitespace-pre-line text-muted-foreground">{review.message}</p> : null}
                       </li>
                     ))}
                   </ul>

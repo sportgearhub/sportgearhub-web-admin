@@ -72,6 +72,11 @@ function App() {
     setPath(next)
   }, [])
 
+  // SellerCardPage pushes its breadcrumb through an effect that lists onBack in its deps, so this
+  // callback must be stable — an inline arrow here would make the effect re-run every render, call
+  // setTopBarContent again, and loop until React throws (#185).
+  const backToSellers = useCallback(() => navigateTo(SECTION_PATHS.sellers), [navigateTo])
+
   useEffect(() => {
     const onChange = () => setPath(normalizePath(window.location.pathname))
     const originalPushState = window.history.pushState
@@ -192,7 +197,7 @@ function App() {
         <ProductReviewPage />
       ) : section === 'sellers' ? (
         sellerId ? (
-          <SellerCardPage sellerId={sellerId} onBack={() => navigateTo(SECTION_PATHS.sellers)} onTopBarContentChange={setTopBarContent} />
+          <SellerCardPage sellerId={sellerId} onBack={backToSellers} onTopBarContentChange={setTopBarContent} />
         ) : (
           <SellersPage mode="all" onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)} />
         )
