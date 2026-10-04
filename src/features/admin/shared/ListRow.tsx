@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
+import { Button } from '../../../components/ui/button'
+import type { PaginationResponse } from '../adminApi'
 
 export type ListField = { label: string; value: ReactNode }
 
@@ -54,7 +56,7 @@ export function ListRow({ onClick, title, subtitle, badges, fields }: {
 }
 
 /** Shared chrome for a list screen: a sticky toolbar over a scrollable, card-framed list. */
-export function ListScreen({ toolbar, error, children }: { toolbar: ReactNode; error?: string; children: ReactNode }) {
+export function ListScreen({ toolbar, error, footer, children }: { toolbar: ReactNode; error?: string; footer?: ReactNode; children: ReactNode }) {
   return (
     <section className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col">
       <div className="sticky top-14 z-20 border-b bg-card/95 backdrop-blur">
@@ -64,8 +66,25 @@ export function ListScreen({ toolbar, error, children }: { toolbar: ReactNode; e
       <div className="min-h-0 flex-1 p-3 sm:p-4">
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           <ul className="divide-y">{children}</ul>
+          {footer ? <div className="border-t bg-muted/20">{footer}</div> : null}
         </div>
       </div>
     </section>
+  )
+}
+
+/** Server-side pager driven by the `{ items, pagination }` envelope the list endpoints return. */
+export function Pager({ pagination, onPage, disabled }: { pagination: PaginationResponse | null; onPage: (page: number) => void; disabled?: boolean }) {
+  if (!pagination || pagination.totalPages <= 1) {
+    return pagination ? <div className="px-3 py-2 text-xs text-muted-foreground sm:px-4">{pagination.totalItems} всего</div> : null
+  }
+  return (
+    <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-muted-foreground sm:px-4">
+      <span className="truncate">{pagination.totalItems} всего · стр. {pagination.page} из {pagination.totalPages}</span>
+      <div className="flex shrink-0 gap-2">
+        <Button type="button" size="sm" variant="outline" disabled={disabled || !pagination.hasPreviousPage} onClick={() => onPage(pagination.page - 1)}>Назад</Button>
+        <Button type="button" size="sm" variant="outline" disabled={disabled || !pagination.hasNextPage} onClick={() => onPage(pagination.page + 1)}>Вперёд</Button>
+      </div>
+    </div>
   )
 }

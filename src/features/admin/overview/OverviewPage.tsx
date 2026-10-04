@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Banknote, ChevronRight, PackageCheck, Store, UserRound } from 'lucide-react'
+import { ArrowRight, ChevronRight, ClipboardList, PackageCheck, Store, UserRound } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
-import { getProductReviewQueue, getSellers, type ProductReviewQueueItem, type SellerListItem } from '../adminApi'
+import {
+  getProductReviewQueue,
+  getSellers,
+  getSellerReviewQueue,
+  rsqlStatus,
+  type ProductReviewQueueItem,
+  type SellerReviewQueueItem,
+} from '../adminApi'
 import { formatDateTime } from '../shared/format'
 import { sellerKindLabel } from '../sellers/sellerLabels'
 
@@ -15,29 +22,32 @@ type OverviewPageProps = {
 type Stat = { key: string; label: string; value: number | null; hint: string; icon: typeof Store; onClick: () => void }
 
 export function OverviewPage({ onOpenOnboarding, onOpenSellers, onOpenProducts, onOpenSeller }: OverviewPageProps) {
-  const [sellers, setSellers] = useState<SellerListItem[] | null>(null)
+  const [pendingSellers, setPendingSellers] = useState<SellerReviewQueueItem[] | null>(null)
+  const [pendingSellersTotal, setPendingSellersTotal] = useState<number | null>(null)
   const [products, setProducts] = useState<ProductReviewQueueItem[] | null>(null)
+  const [productsTotal, setProductsTotal] = useState<number | null>(null)
+  const [changesTotal, setChangesTotal] = useState<number | null>(null)
+  const [activeTotal, setActiveTotal] = useState<number | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    getSellers()
-      .then(setSellers)
+    // The pending queue previews double as the count source via pagination.totalItems.
+    getSellerReviewQueue('pending_review', { pageSize: 6 })
+      .then((result) => { setPendingSellers(result.items); setPendingSellersTotal(result.pagination.totalItems) })
       .catch((failure) => setError(failure instanceof Error ? failure.message : 'Не удалось загрузить сводку'))
-    getProductReviewQueue('pending_review').then(setProducts).catch(() => setProducts([]))
+    getProductReviewQueue('pending_review', { pageSize: 6 })
+      .then((result) => { setProducts(result.items); setProductsTotal(result.pagination.totalItems) })
+      .catch(() => { setProducts([]); setProductsTotal(null) })
+    // Status-only counts: one cheap page each, read the total.
+    getSellers({ filter: rsqlStatus('changes_requested'), pageSize: 1 }).then((r) => setChangesTotal(r.pagination.totalItems)).catch(() => setChangesTotal(null))
+    getSellers({ filter: rsqlStatus('active'), pageSize: 1 }).then((r) => setActiveTotal(r.pagination.totalItems)).catch(() => setActiveTotal(null))
   }, [])
 
-  const pendingSellers = (sellers ?? [])
-    .filter((row) => row.status === 'pending_review')
-    .sort((a, b) => (a.reviewOpenedAt ?? a.createdAt).localeCompare(b.reviewOpenedAt ?? b.createdAt))
-  const awaitingBank = (sellers ?? []).filter((row) => row.status === 'active' && row.payoutDetailsPresent && !row.payoutRegistered)
-  const active = (sellers ?? []).filter((row) => row.status === 'active')
-  const payable = (sellers ?? []).filter((row) => row.canBePaid)
-
   const stats: Stat[] = [
-    { key: 'sellers', label: 'Продавцы на проверке', value: sellers ? pendingSellers.length : null, hint: 'ждут решения', icon: UserRound, onClick: onOpenOnboarding },
-    { key: 'products', label: 'Товары на проверке', value: products ? products.length : null, hint: 'карточек на модерации', icon: PackageCheck, onClick: onOpenProducts },
-    { key: 'bank', label: 'Ждут регистрации в банке', value: sellers ? awaitingBank.length : null, hint: 'реквизиты есть, точка — нет', icon: Banknote, onClick: onOpenSellers },
-    { key: 'active', label: 'Активных кабинетов', value: sellers ? active.length : null, hint: `${payable.length} могут получать выплаты`, icon: Store, onClick: onOpenSellers },
+    { key: 'pending', label: 'Продавцы на проверке', value: pendingSellersTotal, hint: 'ждут решения', icon: UserRound, onClick: onOpenOnboarding },
+    { key: 'products', label: 'Товары на проверке', value: productsTotal, hint: 'карточек на модерации', icon: PackageCheck, onClick: onOpenProducts },
+    { key: 'changes', label: 'Ждут доработки', value: changesTotal, hint: 'вернули продавцу', icon: ClipboardList, onClick: onOpenOnboarding },
+    { key: 'active', label: 'Активные кабинеты', value: activeTotal, hint: 'на витрине', icon: Store, onClick: onOpenSellers },
   ]
 
   return (
@@ -73,27 +83,27 @@ export function OverviewPage({ onOpenOnboarding, onOpenSellers, onOpenProducts, 
           title="Заявки продавцов"
           subtitle="Старые — сверху"
           icon={UserRound}
-          count={sellers ? pendingSellers.length : null}
+          count={pendingSellersTotal}
           onOpenAll={onOpenOnboarding}
-          loading={sellers === null}
+          loading={pendingSellers === null}
           emptyText="Нет заявок на проверке."
-          items={pendingSellers.slice(0, 6).map((seller) => ({
+          items={(pendingSellers ?? []).map((seller) => ({
             id: seller.sellerId,
             onClick: () => onOpenSeller(seller.sellerId),
             title: seller.displayName,
             meta: [sellerKindLabel(seller.sellerKind), seller.legalName ?? seller.inn ?? ''].filter(Boolean).join(' · '),
-            aside: seller.reviewOpenedAt ? `с ${formatDateTime(seller.reviewOpenedAt)}` : '',
+            aside: seller.openedAt ? `с ${formatDateTime(seller.openedAt)}` : '',
           }))}
         />
         <QueueCard
           title="Товары на проверке"
           subtitle="Старые — сверху"
           icon={PackageCheck}
-          count={products ? products.length : null}
+          count={productsTotal}
           onOpenAll={onOpenProducts}
           loading={products === null}
           emptyText="Нет карточек на модерации."
-          items={(products ?? []).slice(0, 6).map((product) => ({
+          items={(products ?? []).map((product) => ({
             id: product.productId,
             onClick: onOpenProducts,
             title: product.title,

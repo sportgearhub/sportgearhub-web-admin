@@ -1097,11 +1097,37 @@
         "operationId": "EbashITSportgearhubApiEndpointsInternalSellerReviewGetInternalSellersEndpoint",
         "parameters": [
           {
-            "name": "status",
+            "name": "filter",
             "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
             "schema": {
-              "type": "string",
-              "nullable": true
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
@@ -1111,10 +1137,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSellerProfileSellerAdminListItemResponse"
-                  }
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfSellerAdminListItemResponse"
                 }
               }
             }
@@ -1144,6 +1167,40 @@
               "type": "string",
               "nullable": true
             }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -1152,10 +1209,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSellerProfileSellerReviewQueueItemResponse"
-                  }
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfSellerReviewQueueItemResponse"
                 }
               }
             }
@@ -1540,6 +1594,40 @@
               "type": "string",
               "nullable": true
             }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -1548,10 +1636,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProductReviewProductReviewQueueItemResponse"
-                  }
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfProductReviewQueueItemResponse"
                 }
               }
             }
@@ -4214,6 +4299,28 @@
         "type": "object",
         "additionalProperties": false
       },
+      "RsqlParserNetLinqRsqlPagedResultOfSellerAdminListItemResponse": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSellerProfileSellerAdminListItemResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
+      },
       "EbashITSportgearhubApiModelsInternalSellerProfileSellerAdminListItemResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -4269,9 +4376,27 @@
           }
         }
       },
-      "EbashITSportgearhubApiEndpointsInternalSellerReviewGetInternalSellersRequest": {
+      "RsqlParserNetLinqRsqlPagedResultOfSellerReviewQueueItemResponse": {
         "type": "object",
-        "additionalProperties": false
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalSellerProfileSellerReviewQueueItemResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
       },
       "EbashITSportgearhubApiModelsInternalSellerProfileSellerReviewQueueItemResponse": {
         "type": "object",
@@ -4768,6 +4893,28 @@
           "comments": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "RsqlParserNetLinqRsqlPagedResultOfProductReviewQueueItemResponse": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProductReviewProductReviewQueueItemResponse"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
           }
         }
       },

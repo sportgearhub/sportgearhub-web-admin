@@ -43,11 +43,13 @@ export function useUserManagement() {
       setActiveQuery(query)
       const [userResponse, sellerResponse, optionsResponse] = await Promise.all([
         getInternalUsers(query),
-        getSellers(),
+        // Best-effort lookup of seller display names for the detail modal; the list is now paged, so
+        // pull a generous page rather than the whole platform.
+        getSellers({ pageSize: 100 }),
         getInternalUserManagementOptions(),
       ])
       setUsers(userResponse.items)
-      setSellers(sellerResponse)
+      setSellers(sellerResponse.items)
       setPagination(userResponse.pagination)
       setListOptions(optionsResponse)
       setError('')

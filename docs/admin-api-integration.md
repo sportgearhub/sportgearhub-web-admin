@@ -22,62 +22,35 @@ the only thing standing between a misclick and a consequence.
 ## The seller review queue
 
 ```
-GET  /internal/sellers/review-queue        who is waiting, oldest first
-GET  /internal/sellers?…                   everyone, with filter/sort/page
+GET  /internal/sellers?filter=status==pending_review   who is waiting
+GET  /internal/sellers/review-queue                    the same queue, leaner rows
 GET  /internal/sellers/{seller_id}         the full dossier
 POST /internal/sellers/{seller_id}/actions the decision
 GET  /internal/sellers/{seller_id}/memberships
 ```
 
-### The decision
+All three lists answer `{ items, pagination }` and take `page`/`pageSize`; `/internal/sellers` and
+`/internal/users` take `filter` and `sort` too. Until 2026-10-01 `/internal/sellers` returned every
+cabinet on the platform and ran eight satellite queries over all of them to show twenty rows.
 
-```json
-POST /internal/sellers/{seller_id}/actions
-{ "action": "request_changes", "message": "ИНН не совпадает с наименованием в реестре." }
-```
+Status is a filter: `?filter=status==pending_review` is «Заявки»,
+`?filter=status=in=(draft,changes_requested)` is everything waiting on the seller.
 
-`action` is one of `submit` · `approve` · `request_changes` · `reject` · `reopen` · `suspend` ·
-`activate` · `archive`.
-
-**`message` is required for `request_changes` and `reject`** — 400 without it. The seller reads it,
-so it has to say what to fix. It is optional for the rest.
-
-### The transition table
-
-This is the whole rulebook. Anything not in it answers **409 `seller.transition_not_allowed`**.
-
-| From | `approve` | `request_changes` | `reject` | `suspend` | `activate` | `archive` | `reopen` | `submit` |
-|---|---|---|---|---|---|---|---|---|
-| `draft` | — | — | — | — | — | — | — | → `pending_review` |
-| `pending_review` | → `active` | → `changes_requested` | → `rejected` | — | — | — | — | — |
-| `changes_requested` | — | — | — | — | — | — | — | → `pending_review` |
-| `active` | — | → `changes_requested` | — | → `suspended` | — | → `archived` | — | — |
-| `suspended` | — | — | — | — | → `active` | → `archived` | — | — |
-| `rejected` | — | — | — | — | — | — | → `draft` | — |
-| `archived` | — | — | — | — | — | — | — | — |
-
-Two rows are worth noticing:
-
-- **`active` → `request_changes`** is re-moderation. A seller already on the marketplace is pulled
-  back to `changes_requested` and stops being public. Use it when something approved turns out to be
-  wrong; it is not the same as `suspend`.
-- **`archived` is terminal.** Nothing leaves it. Confirm before sending it.
-
-Only `active` is public. A seller in any other status is invisible to customers, along with every
-card they own.
-
-Drive the buttons from this table rather than from the status label — a button that answers 409 is
-worse than a button that is not there.
-
----
+> A `tab` parameter and a `tab-counts` endpoint existed here for one day. They were added while
+> `filter=status==pending_review` could not work — the query SDK matched enum values by member name,
+> and an underscore is not part of one — and removed once `RsqlParserNet.Linq` 1.1.1 fixed that. Every
+> value they offered was a status, so the parameter was a second way to say the same thing.
 
 ## The product review queue
 
 ```
-GET  /internal/products/review-queue
+GET  /internal/products/review-queue?status=pending_review&page=1&pageSize=20
 GET  /internal/products/{product_id}
 POST /internal/products/{product_id}/actions
 ```
+
+`{ items, pagination }`, oldest first, `status` defaulting to `pending_review`. It used to return the
+whole queue — which is longest on exactly the day you are most behind.
 
 ```json
 POST /internal/products/{product_id}/actions

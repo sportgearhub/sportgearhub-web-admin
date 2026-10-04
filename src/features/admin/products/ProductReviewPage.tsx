@@ -9,13 +9,16 @@ import {
   getProductReviewCard,
   getProductReviewQueue,
   postProductAction,
+  type PaginationResponse,
   type ProductAction,
   type ProductReviewCard,
   type ProductReviewQueueItem,
   type ProductStatus,
 } from '../adminApi'
 import { formatDateTime } from '../shared/format'
-import { ListRow, ListScreen } from '../shared/ListRow'
+import { ListRow, ListScreen, Pager } from '../shared/ListRow'
+
+const PAGE_SIZE = 50
 
 const TABS: Array<{ status: ProductStatus; label: string }> = [
   { status: 'pending_review', label: 'На проверке' },
@@ -60,6 +63,8 @@ function productStatusVariant(status: ProductStatus): BadgeProps['variant'] {
 export function ProductReviewPage() {
   const [status, setStatus] = useState<ProductStatus>('pending_review')
   const [rows, setRows] = useState<ProductReviewQueueItem[]>([])
+  const [pagination, setPagination] = useState<PaginationResponse | null>(null)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [openProductId, setOpenProductId] = useState<string | null>(null)
@@ -67,15 +72,23 @@ export function ProductReviewPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setRows(await getProductReviewQueue(status))
+      const result = await getProductReviewQueue(status, { page, pageSize: PAGE_SIZE })
+      setRows(result.items)
+      setPagination(result.pagination)
       setError('')
     } catch (failure) {
       setRows([])
+      setPagination(null)
       setError(failure instanceof Error ? failure.message : 'Не удалось загрузить очередь')
     } finally {
       setLoading(false)
     }
-  }, [status])
+  }, [status, page])
+
+  function selectStatus(next: ProductStatus) {
+    setStatus(next)
+    setPage(1)
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0)
@@ -86,7 +99,7 @@ export function ProductReviewPage() {
     <div className="flex items-center gap-2 p-2 sm:p-3">
       <div className="no-scrollbar -mx-2 flex flex-1 gap-1 overflow-x-auto px-2 sm:mx-0 sm:px-0" role="tablist">
         {TABS.map((tab) => (
-          <Button key={tab.status} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => setStatus(tab.status)} className="shrink-0">
+          <Button key={tab.status} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => selectStatus(tab.status)} className="shrink-0">
             {tab.label}
           </Button>
         ))}
@@ -99,7 +112,7 @@ export function ProductReviewPage() {
 
   return (
     <>
-      <ListScreen toolbar={toolbar} error={error}>
+      <ListScreen toolbar={toolbar} error={error} footer={<Pager pagination={pagination} onPage={setPage} disabled={loading} />}>
         {loading && rows.length === 0 ? (
           <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
         ) : rows.length === 0 ? (

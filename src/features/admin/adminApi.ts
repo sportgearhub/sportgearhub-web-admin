@@ -202,6 +202,24 @@ function jsonBody<TResponse>(method: 'POST' | 'PATCH' | 'PUT', path: string, pay
   return requestJson<TResponse>(path, { method, body: JSON.stringify(payload) })
 }
 
+/** filter/sort/page/pageSize for the RSQL list endpoints; `extra` carries non-RSQL params like `status`. */
+export type ListQueryParams = { filter?: string; sort?: string; page?: number; pageSize?: number }
+
+function listQuery(params: ListQueryParams = {}, extra?: Record<string, string | undefined>) {
+  const searchParams = new URLSearchParams()
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) searchParams.set(key, value)
+    }
+  }
+  if (params.filter) searchParams.set('filter', params.filter)
+  if (params.sort) searchParams.set('sort', params.sort)
+  if (params.page != null) searchParams.set('page', String(params.page))
+  if (params.pageSize != null) searchParams.set('pageSize', String(params.pageSize))
+  const qs = searchParams.toString()
+  return qs ? `?${qs}` : ''
+}
+
 const id = (value: string) => encodeURIComponent(value)
 
 
@@ -355,12 +373,22 @@ export type SellerMembership = {
   createdAt: string
 }
 
-export function getSellers(status?: SellerStatus) {
-  return requestJson<SellerListItem[]>(status ? `/internal/sellers?status=${id(status)}` : '/internal/sellers')
+/**
+ * The seller list is paged and RSQL-filtered — there is no `status` query param any more. Filter by
+ * status through `filter`, e.g. `rsqlStatus('pending_review')` or `status=in=(draft,changes_requested)`.
+ */
+export function getSellers(params: ListQueryParams = {}) {
+  return requestJson<PagedResult<SellerListItem>>(`/internal/sellers${listQuery(params)}`)
 }
 
-export function getSellerReviewQueue(status?: SellerStatus) {
-  return requestJson<SellerReviewQueueItem[]>(status ? `/internal/sellers/review-queue?status=${id(status)}` : '/internal/sellers/review-queue')
+/** The same waiting queue as `status==pending_review`, with leaner rows and oldest-first by default. */
+export function getSellerReviewQueue(status?: SellerStatus, params: ListQueryParams = {}) {
+  return requestJson<PagedResult<SellerReviewQueueItem>>(`/internal/sellers/review-queue${listQuery(params, status ? { status } : undefined)}`)
+}
+
+/** RSQL equality for a single status, e.g. `status==pending_review`. */
+export function rsqlStatus(status: string) {
+  return `status==${status}`
 }
 
 export function getSeller(sellerId: string) {
@@ -575,8 +603,9 @@ export type ProductReviewCard = {
   history: ProductReview[]
 }
 
-export function getProductReviewQueue(status?: ProductStatus) {
-  return requestJson<ProductReviewQueueItem[]>(status ? `/internal/products/review-queue?status=${id(status)}` : '/internal/products/review-queue')
+/** Paged, oldest-first; `status` defaults to `pending_review` server-side when omitted. */
+export function getProductReviewQueue(status?: ProductStatus, params: ListQueryParams = {}) {
+  return requestJson<PagedResult<ProductReviewQueueItem>>(`/internal/products/review-queue${listQuery(params, status ? { status } : undefined)}`)
 }
 
 export function getProductReviewCard(productId: string) {
