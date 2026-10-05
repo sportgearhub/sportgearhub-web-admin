@@ -1,75 +1,45 @@
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import { getSettlementPlan, getSettlements, type PaginationResponse, type SettlementPlan } from '../adminApi'
+import { getSettlementPlan, getSettlements, type SettlementPlan } from '../adminApi'
 import { formatDateTime, formatRubles } from '../shared/format'
-import { ListRow, ListScreen, Pager } from '../shared/ListRow'
+import { ServerDataTable } from '../shared/ServerDataTable'
+import type { RsqlColumn, RsqlTableQuery } from '../shared/RsqlDataTable'
 import { DetailScreen, Field, Panel, PanelGrid } from '../shared/detail'
 
-const PAGE_SIZE = 50
+const COLUMNS: Array<RsqlColumn<SettlementPlan>> = [
+  { key: 'payout', label: 'Продавцу', field: 'seller_payout_amount', align: 'right', filterable: false, width: '16%', value: (row) => row.sellerPayoutAmount, render: (row) => <span className="text-sm font-medium tabular-nums">{formatRubles(row.sellerPayoutAmount)}</span> },
+  { key: 'status', label: 'Статус', field: 'status', filterable: false, sortable: false, width: '14%', value: (row) => row.status, render: (row) => <Badge variant="secondary">{row.status}</Badge> },
+  { key: 'gross', label: 'Собрано', field: 'gross_collected_amount', align: 'right', filterable: false, width: '15%', value: (row) => row.grossCollectedAmount, render: (row) => <span className="text-sm tabular-nums">{formatRubles(row.grossCollectedAmount)}</span> },
+  { key: 'commission', label: 'Комиссия', field: 'platform_commission_amount', align: 'right', filterable: false, width: '15%', value: (row) => row.platformCommissionAmount, render: (row) => <span className="text-sm tabular-nums">{formatRubles(row.platformCommissionAmount)}</span> },
+  { key: 'execution', label: 'Выплата', field: 'payout_execution_id', filterable: false, sortable: false, width: '14%', value: (row) => row.payoutExecution?.status, render: (row) => row.payoutExecution ? <Badge variant="secondary">{row.payoutExecution.status}</Badge> : <span className="text-xs text-muted-foreground">нет</span> },
+  { key: 'created', label: 'Создан', field: 'created_at', filterable: false, width: '14%', value: (row) => row.createdAt, render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.createdAt)}</span> },
+]
 
 export function SettlementsPage({ onOpen }: { onOpen: (settlementPlanId: string) => void }) {
-  const [rows, setRows] = useState<SettlementPlan[]>([])
-  const [pagination, setPagination] = useState<PaginationResponse | null>(null)
-  const [page, setPage] = useState(1)
   const [onlyPlanned, setOnlyPlanned] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result = await getSettlements({ filter: onlyPlanned ? 'status==planned' : undefined, page, pageSize: PAGE_SIZE })
-      setRows(result.items)
-      setPagination(result.pagination)
-      setError('')
-    } catch (failure) {
-      setRows([])
-      setPagination(null)
-      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить расчёты')
-    } finally {
-      setLoading(false)
-    }
-  }, [onlyPlanned, page])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
-  }, [load])
-
-  const toolbar = (
-    <div className="flex items-center gap-2 p-2 sm:p-3">
-      <div className="flex gap-1">
-        <Button type="button" size="sm" variant={onlyPlanned ? 'ghost' : 'secondary'} onClick={() => { setPage(1); setOnlyPlanned(false) }}>Все</Button>
-        <Button type="button" size="sm" variant={onlyPlanned ? 'secondary' : 'ghost'} onClick={() => { setPage(1); setOnlyPlanned(true) }}>Запланированы</Button>
-      </div>
-      <Button type="button" variant="outline" size="icon" className="ml-auto" onClick={() => void load()} aria-label="Обновить" title="Обновить"><RefreshCw size={16} className={loading ? 'animate-spin' : undefined} /></Button>
-    </div>
-  )
+  const fetchPage = useCallback((query: RsqlTableQuery) => {
+    const filter = [onlyPlanned ? 'status==planned' : '', query.filter].filter(Boolean).join(';')
+    return getSettlements({ ...query, filter: filter || undefined })
+  }, [onlyPlanned])
 
   return (
-    <ListScreen toolbar={toolbar} error={error} footer={<Pager pagination={pagination} onPage={setPage} disabled={loading} />}>
-      {loading && rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
-      ) : rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Расчётов нет.</li>
-      ) : rows.map((plan) => (
-        <li key={plan.settlementPlanId}>
-          <ListRow
-            onClick={() => onOpen(plan.settlementPlanId)}
-            title={`${formatRubles(plan.sellerPayoutAmount)} → продавцу`}
-            badges={<Badge variant="secondary">{plan.status}</Badge>}
-            fields={[
-              { label: 'Собрано', value: formatRubles(plan.grossCollectedAmount) },
-              { label: 'Комиссия', value: formatRubles(plan.platformCommissionAmount) },
-              { label: 'Выплата', value: plan.payoutExecution ? plan.payoutExecution.status : '—' },
-              { label: 'Создан', value: formatDateTime(plan.createdAt) },
-            ]}
-          />
-        </li>
-      ))}
-    </ListScreen>
+    <section className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
+      <div className="flex gap-1 border-b px-2 py-2 sm:px-3">
+        <Button type="button" size="sm" variant={onlyPlanned ? 'ghost' : 'secondary'} onClick={() => setOnlyPlanned(false)}>Все</Button>
+        <Button type="button" size="sm" variant={onlyPlanned ? 'secondary' : 'ghost'} onClick={() => setOnlyPlanned(true)}>Запланированы</Button>
+      </div>
+      <ServerDataTable
+        columns={COLUMNS}
+        getRowKey={(row) => row.settlementPlanId}
+        onRowOpen={(row) => onOpen(row.settlementPlanId)}
+        fetchPage={fetchPage}
+        emptyText="Расчётов нет."
+        pageSizeOptions={[20, 50, 100]}
+        initialPageSize={20}
+        reloadKey={onlyPlanned ? 'planned' : 'all'}
+      />
+    </section>
   )
 }
 

@@ -83,8 +83,14 @@ error parsing) and one function per endpoint. Endpoints that take no body (`…/
 
 Every entity detail (seller, product, booking, settlement, payout, receipt, user) is a **routed page**,
 not a modal: `/console/<section>/<id>` deep-links and the browser back button works. They share one
-`DetailScreen` shell (sticky back + title + status + actions over a responsive panel grid), and lists
-share `ListScreen`/`ListRow` + a pager — so the console reads the same on a phone and a desktop.
+`DetailScreen` shell (sticky back + title + status + actions over a responsive panel grid).
+
+Lists are **data tables** (`RsqlDataTable` via `ServerDataTable`): column-header flyouts carry the
+per-column filter and sort, driven server-side through the endpoint's RSQL `filter`/`sort`; the footer
+has a page-size selector, first/prev/next/last and an `N–M из T` count. Columns only expose a
+filter/sort where the endpoint whitelists that field (`filterable`/`sortable` on the column) so the
+affordance never produces a 400. The surfaces are flat — square borders and row separators, no rounded
+cards inside the content frame.
 
 ## Money units
 

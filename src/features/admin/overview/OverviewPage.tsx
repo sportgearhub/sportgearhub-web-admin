@@ -62,7 +62,7 @@ export function OverviewPage({ onOpenOnboarding, onOpenSellers, onOpenProducts, 
               key={stat.key}
               type="button"
               onClick={stat.onClick}
-              className="group flex flex-col gap-3 rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40"
+              className="group flex flex-col gap-3 border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
             >
               <div className="flex items-center justify-between">
                 <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary"><Icon size={18} /></span>
@@ -129,7 +129,7 @@ function QueueCard({ title, subtitle, icon: Icon, count, items, loading, emptyTe
   onOpenAll: () => void
 }) {
   return (
-    <section className="flex flex-col rounded-xl border bg-card shadow-sm">
+    <section className="flex flex-col border bg-card">
       <header className="flex items-center gap-3 border-b px-4 py-3">
         <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary"><Icon size={16} /></span>
         <div className="min-w-0 flex-1">

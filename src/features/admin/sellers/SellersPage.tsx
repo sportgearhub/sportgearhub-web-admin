@@ -1,125 +1,83 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { RefreshCw, Search } from 'lucide-react'
+import { useCallback, useMemo } from 'react'
 import { Badge } from '../../../components/ui/badge'
-import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
-import { getSellers, rsqlStatus, type PaginationResponse, type SellerListItem, type SellerStatus } from '../adminApi'
+import { getSellers, type SellerListItem } from '../adminApi'
 import { formatDateTime } from '../shared/format'
-import { ListRow, ListScreen, Pager } from '../shared/ListRow'
-
-const PAGE_SIZE = 50
+import { ServerDataTable } from '../shared/ServerDataTable'
+import type { RsqlColumn, RsqlTableQuery } from '../shared/RsqlDataTable'
 import { sellerKindLabel, sellerStatusLabel, sellerStatusVariant } from './sellerLabels'
 
-const ONBOARDING_TABS: Array<{ status: SellerStatus; label: string }> = [
-  { status: 'pending_review', label: 'На проверке' },
-  { status: 'changes_requested', label: 'Нужны изменения' },
-  { status: 'rejected', label: 'Отклонённые' },
-]
+const ALL_STATUSES = ['draft', 'pending_review', 'changes_requested', 'rejected', 'active', 'suspended', 'archived']
+const REVIEW_FILTER = 'status=in=(pending_review,changes_requested,rejected)'
 
-const ALL_TABS: Array<{ status: SellerStatus | ''; label: string }> = [
-  { status: '', label: 'Все' },
-  { status: 'active', label: 'Активные' },
-  { status: 'draft', label: 'Черновики' },
-  { status: 'suspended', label: 'Приостановленные' },
-]
-
-type SellersPageProps = {
-  /** «Заявки» shows the statuses a reviewer acts on; «Продавцы» shows everyone. */
-  mode: 'onboarding' | 'all'
-  onOpenSeller: (sellerId: string) => void
+function buildColumns(mode: 'onboarding' | 'all'): Array<RsqlColumn<SellerListItem>> {
+  return [
+    {
+      key: 'seller', label: 'Кабинет', field: 'display_name', filterKind: 'text', width: '26%',
+      value: (row) => row.displayName,
+      render: (row) => (
+        <div className="min-w-0">
+          <strong className="block truncate text-sm font-medium">{row.displayName}</strong>
+          <small className="block truncate text-xs text-muted-foreground">{row.sellerId}</small>
+        </div>
+      ),
+    },
+    {
+      key: 'status', label: 'Статус', field: 'status', width: '13%',
+      filterKind: 'select', options: ALL_STATUSES, filterable: mode === 'all',
+      value: (row) => row.status,
+      render: (row) => <Badge variant={sellerStatusVariant(row.status)}>{sellerStatusLabel(row.status)}</Badge>,
+    },
+    {
+      key: 'kind', label: 'Форма', field: 'seller_kind', width: '11%', filterable: false, sortable: false,
+      value: (row) => row.sellerKind,
+      render: (row) => <span className="text-sm">{sellerKindLabel(row.sellerKind)}</span>,
+    },
+    {
+      key: 'legal', label: 'Юрлицо · ИНН', field: 'legal_name', filterKind: 'text', width: '22%',
+      value: (row) => row.legalName,
+      render: (row) => (
+        <div className="min-w-0">
+          <span className="block truncate text-sm">{row.legalName ?? '—'}</span>
+          <small className="block text-xs text-muted-foreground">{row.inn ?? 'ИНН не указан'}</small>
+        </div>
+      ),
+    },
+    {
+      key: 'payout', label: 'Выплаты', field: 'can_be_paid', width: '12%', filterable: false, sortable: false,
+      value: (row) => row.canBePaid,
+      render: (row) => (
+        <Badge variant={row.canBePaid ? 'success' : row.payoutRegistered ? 'info' : row.payoutDetailsPresent ? 'warning' : 'secondary'}>
+          {row.canBePaid ? 'Готовы' : row.payoutRegistered ? 'В банке' : row.payoutDetailsPresent ? 'Ждут банк' : 'Нет'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'updated', label: 'Обновлён', field: 'updated_at', width: '16%', filterable: false,
+      value: (row) => row.updatedAt,
+      render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.reviewOpenedAt ?? row.updatedAt)}</span>,
+    },
+  ]
 }
 
-export function SellersPage({ mode, onOpenSeller }: SellersPageProps) {
-  const [status, setStatus] = useState<SellerStatus | ''>(mode === 'onboarding' ? 'pending_review' : '')
-  const [rows, setRows] = useState<SellerListItem[]>([])
-  const [pagination, setPagination] = useState<PaginationResponse | null>(null)
-  const [page, setPage] = useState(1)
-  const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const tabs = mode === 'onboarding' ? ONBOARDING_TABS : ALL_TABS
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result = await getSellers({ filter: status ? rsqlStatus(status) : undefined, page, pageSize: PAGE_SIZE })
-      setRows(result.items)
-      setPagination(result.pagination)
-      setError('')
-    } catch (failure) {
-      setRows([])
-      setPagination(null)
-      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить продавцов')
-    } finally {
-      setLoading(false)
-    }
-  }, [status, page])
-
-  function selectStatus(next: SellerStatus | '') {
-    setStatus(next)
-    setPage(1)
-  }
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
-  }, [load])
-
-  const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return rows
-    return rows.filter((row) => [row.displayName, row.legalName, row.inn, row.sellerId].some((value) => value?.toLowerCase().includes(needle)))
-  }, [rows, query])
-
-  const toolbar = (
-    <div className="flex flex-col gap-2 p-2 sm:flex-row sm:flex-wrap sm:items-center sm:p-3">
-      <div className="no-scrollbar -mx-2 flex gap-1 overflow-x-auto px-2 sm:mx-0 sm:px-0" role="tablist">
-        {tabs.map((tab) => (
-          <Button key={tab.label} type="button" size="sm" variant={status === tab.status ? 'secondary' : 'ghost'} role="tab" aria-selected={status === tab.status} onClick={() => selectStatus(tab.status)} className="shrink-0">
-            {tab.label}
-          </Button>
-        ))}
-      </div>
-      <div className="flex items-center gap-2 sm:ml-auto">
-        <div className="relative flex-1 sm:w-64 sm:flex-none">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-          <Input className="pl-8" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Название, ИНН, юрлицо" aria-label="Поиск" />
-        </div>
-        <Button type="button" variant="outline" size="icon" onClick={() => void load()} aria-label="Обновить" title="Обновить">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
-        </Button>
-      </div>
-    </div>
-  )
+export function SellersPage({ mode, onOpenSeller }: { mode: 'onboarding' | 'all'; onOpenSeller: (sellerId: string) => void }) {
+  const columns = useMemo(() => buildColumns(mode), [mode])
+  const fetchPage = useCallback((query: RsqlTableQuery) => {
+    const filter = [mode === 'onboarding' ? REVIEW_FILTER : '', query.filter].filter(Boolean).join(';')
+    return getSellers({ ...query, filter: filter || undefined })
+  }, [mode])
 
   return (
-    <ListScreen toolbar={toolbar} error={error} footer={<Pager pagination={pagination} onPage={setPage} disabled={loading} />}>
-      {loading && rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
-      ) : visible.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">{mode === 'onboarding' ? 'Заявок нет.' : 'Продавцов нет.'}</li>
-      ) : visible.map((row) => (
-        <li key={row.sellerId}>
-          <ListRow
-            onClick={() => onOpenSeller(row.sellerId)}
-            title={row.displayName}
-            badges={
-              <>
-                <Badge variant={sellerStatusVariant(row.status)}>{sellerStatusLabel(row.status)}</Badge>
-                <Badge variant={row.canBePaid ? 'success' : row.payoutRegistered ? 'info' : row.payoutDetailsPresent ? 'warning' : 'secondary'}>
-                  {row.canBePaid ? 'Выплаты готовы' : row.payoutRegistered ? 'В банке' : row.payoutDetailsPresent ? 'Ждут банк' : 'Нет выплат'}
-                </Badge>
-              </>
-            }
-            fields={[
-              { label: 'Форма', value: sellerKindLabel(row.sellerKind) },
-              { label: 'Юрлицо · ИНН', value: `${row.legalName ?? '—'}${row.inn ? ` · ${row.inn}` : ''}` },
-              { label: 'Договор', value: row.agreementNumber ? `№ ${row.agreementNumber}` : '—' },
-              { label: mode === 'onboarding' ? 'Ждёт с' : 'Обновлён', value: formatDateTime(row.reviewOpenedAt ?? row.updatedAt) },
-            ]}
-          />
-        </li>
-      ))}
-    </ListScreen>
+    <section className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
+      <ServerDataTable
+        columns={columns}
+        getRowKey={(row) => row.sellerId}
+        onRowOpen={(row) => onOpenSeller(row.sellerId)}
+        fetchPage={fetchPage}
+        emptyText={mode === 'onboarding' ? 'Заявок нет.' : 'Продавцов нет.'}
+        pageSizeOptions={[20, 50, 100]}
+        initialPageSize={20}
+        reloadKey={mode}
+      />
+    </section>
   )
 }

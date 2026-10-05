@@ -1,82 +1,46 @@
-import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink, RefreshCw, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ExternalLink } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
-import { getBooking, getBookings, type BookingDetail, type BookingSummary, type PaginationResponse } from '../adminApi'
+import { getBooking, getBookings, type BookingDetail, type BookingSummary } from '../adminApi'
 import { formatDateTime, formatKopecks, formatRubles } from '../shared/format'
-import { ListRow, ListScreen, Pager } from '../shared/ListRow'
+import { ServerDataTable } from '../shared/ServerDataTable'
+import type { RsqlColumn } from '../shared/RsqlDataTable'
 import { DetailScreen, Field, Panel, PanelGrid } from '../shared/detail'
 import { receiptStatusVariant } from './receiptLabels'
 
-const PAGE_SIZE = 50
+const COLUMNS: Array<RsqlColumn<BookingSummary>> = [
+  {
+    key: 'booking', label: 'Бронь', field: 'booking_number', filterKind: 'text', width: '22%',
+    value: (row) => row.bookingNumber,
+    render: (row) => (
+      <div className="min-w-0">
+        <strong className="block truncate text-sm font-medium">№ {row.bookingNumber}</strong>
+        <small className="block truncate text-xs text-muted-foreground">{row.product?.title ?? '—'}</small>
+      </div>
+    ),
+  },
+  { key: 'customer', label: 'Клиент', field: 'user_id', filterable: false, sortable: false, width: '15%', value: (row) => row.customer?.name, render: (row) => <span className="truncate text-sm">{row.customer?.name ?? '—'}</span> },
+  { key: 'seller', label: 'Продавец', field: 'seller_id', filterable: false, sortable: false, width: '15%', value: (row) => row.seller?.displayName, render: (row) => <span className="truncate text-sm">{row.seller?.displayName ?? '—'}</span> },
+  { key: 'period', label: 'Период', field: 'start_at', filterable: false, width: '18%', value: (row) => row.startAt, render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.startAt)} — {formatDateTime(row.endAt)}</span> },
+  { key: 'amount', label: 'Сумма', field: 'total_charge_amount', filterable: false, align: 'right', width: '12%', value: (row) => row.totalChargeAmount, render: (row) => <span className="text-sm tabular-nums">{formatRubles(row.totalChargeAmount)}</span> },
+  { key: 'payment', label: 'Оплата', field: 'payment_status', filterable: false, sortable: false, width: '10%', value: (row) => row.paymentStatus, render: (row) => <Badge variant="secondary">{row.paymentStatus}</Badge> },
+  { key: 'created', label: 'Создана', field: 'created_at', filterable: false, width: '8%', value: (row) => row.createdAt, render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.createdAt)}</span> },
+]
 
 export function BookingsPage({ onOpen }: { onOpen: (bookingId: string) => void }) {
-  const [rows, setRows] = useState<BookingSummary[]>([])
-  const [pagination, setPagination] = useState<PaginationResponse | null>(null)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
-  const [draft, setDraft] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const filter = search ? `booking_number=="*${search.replace(/"/g, '')}*"` : undefined
-      const result = await getBookings({ filter, page, pageSize: PAGE_SIZE })
-      setRows(result.items)
-      setPagination(result.pagination)
-      setError('')
-    } catch (failure) {
-      setRows([])
-      setPagination(null)
-      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить брони')
-    } finally {
-      setLoading(false)
-    }
-  }, [search, page])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
-  }, [load])
-
-  const toolbar = (
-    <div className="flex items-center gap-2 p-2 sm:p-3">
-      <form className="relative min-w-0 flex-1 sm:max-w-sm" onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(draft.trim()) }}>
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-        <Input className="pl-8" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Номер брони" aria-label="Поиск по номеру брони" />
-      </form>
-      <Button type="button" variant="outline" size="icon" onClick={() => void load()} aria-label="Обновить" title="Обновить"><RefreshCw size={16} className={loading ? 'animate-spin' : undefined} /></Button>
-    </div>
-  )
-
   return (
-    <ListScreen toolbar={toolbar} error={error} footer={<Pager pagination={pagination} onPage={setPage} disabled={loading} />}>
-      {loading && rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
-      ) : rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Броней нет.</li>
-      ) : rows.map((booking) => (
-        <li key={booking.bookingId}>
-          <ListRow
-            onClick={() => onOpen(booking.bookingId)}
-            title={`№ ${booking.bookingNumber}`}
-            subtitle={booking.product?.title}
-            badges={<Badge variant="secondary">{booking.status}</Badge>}
-            fields={[
-              { label: 'Клиент', value: booking.customer?.name ?? '—' },
-              { label: 'Продавец', value: booking.seller?.displayName ?? '—' },
-              { label: 'Период', value: `${formatDateTime(booking.startAt)} — ${formatDateTime(booking.endAt)}` },
-              { label: 'Сумма', value: formatRubles(booking.totalChargeAmount) },
-              { label: 'Оплата', value: booking.paymentStatus },
-              { label: 'Расчёт', value: booking.settlementStatus },
-            ]}
-          />
-        </li>
-      ))}
-    </ListScreen>
+    <section className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
+      <ServerDataTable
+        columns={COLUMNS}
+        getRowKey={(row) => row.bookingId}
+        onRowOpen={(row) => onOpen(row.bookingId)}
+        fetchPage={(query) => getBookings(query)}
+        emptyText="Броней нет."
+        pageSizeOptions={[20, 50, 100]}
+        initialPageSize={20}
+      />
+    </section>
   )
 }
 

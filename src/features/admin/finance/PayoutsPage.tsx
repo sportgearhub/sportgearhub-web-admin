@@ -1,80 +1,50 @@
 import { useCallback, useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import { getPayout, getPayouts, type PaginationResponse, type PayoutSummary } from '../adminApi'
+import { getPayout, getPayouts, type PayoutSummary } from '../adminApi'
 import { formatDateTime, formatRubles } from '../shared/format'
-import { ListRow, ListScreen, Pager } from '../shared/ListRow'
+import { ServerDataTable } from '../shared/ServerDataTable'
+import type { RsqlColumn, RsqlTableQuery } from '../shared/RsqlDataTable'
 import { DetailScreen, Field, Panel } from '../shared/detail'
-
-const PAGE_SIZE = 50
 
 function payoutVariant(status: string) {
   return status === 'failed' ? 'destructive' : status === 'paid' ? 'success' : 'secondary'
 }
 
+const COLUMNS: Array<RsqlColumn<PayoutSummary>> = [
+  { key: 'amount', label: 'Сумма', field: 'amount', align: 'right', filterable: false, width: '14%', value: (row) => row.payout.amount, render: (row) => <span className="text-sm font-medium tabular-nums">{formatRubles(row.payout.amount)}</span> },
+  { key: 'status', label: 'Статус', field: 'status', filterable: false, sortable: false, width: '12%', value: (row) => row.payout.status, render: (row) => <Badge variant={payoutVariant(row.payout.status)}>{row.payout.status}</Badge> },
+  { key: 'seller', label: 'Продавец', field: 'seller_id', filterable: false, sortable: false, width: '22%', value: (row) => row.seller?.displayName, render: (row) => <span className="truncate text-sm">{row.seller?.displayName ?? '—'}</span> },
+  { key: 'booking', label: 'Бронь', field: 'booking_number', filterable: false, sortable: false, width: '14%', value: (row) => row.bookingNumber, render: (row) => <span className="text-sm">{row.bookingNumber ? `№ ${row.bookingNumber}` : '—'}</span> },
+  { key: 'ref', label: 'Внешний реф', field: 'external_payout_ref', filterKind: 'text', sortable: false, width: '18%', value: (row) => row.payout.externalPayoutRef, render: (row) => <span className="truncate text-xs text-muted-foreground">{row.payout.externalPayoutRef ?? '—'}</span> },
+  { key: 'created', label: 'Создана', field: 'created_at', filterable: false, width: '12%', value: (row) => row.payout.createdAt, render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.payout.createdAt)}</span> },
+  { key: 'paid', label: 'Оплачена', field: 'paid_at', filterable: false, width: '8%', value: (row) => row.payout.paidAt, render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.payout.paidAt)}</span> },
+]
+
 export function PayoutsPage({ onOpen }: { onOpen: (payoutExecutionId: string) => void }) {
-  const [rows, setRows] = useState<PayoutSummary[]>([])
-  const [pagination, setPagination] = useState<PaginationResponse | null>(null)
-  const [page, setPage] = useState(1)
   const [onlyFailed, setOnlyFailed] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result = await getPayouts({ filter: onlyFailed ? 'status==failed' : undefined, page, pageSize: PAGE_SIZE })
-      setRows(result.items)
-      setPagination(result.pagination)
-      setError('')
-    } catch (failure) {
-      setRows([])
-      setPagination(null)
-      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить выплаты')
-    } finally {
-      setLoading(false)
-    }
-  }, [onlyFailed, page])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
-  }, [load])
-
-  const toolbar = (
-    <div className="flex items-center gap-2 p-2 sm:p-3">
-      <div className="flex gap-1">
-        <Button type="button" size="sm" variant={onlyFailed ? 'ghost' : 'secondary'} onClick={() => { setPage(1); setOnlyFailed(false) }}>Все</Button>
-        <Button type="button" size="sm" variant={onlyFailed ? 'secondary' : 'ghost'} onClick={() => { setPage(1); setOnlyFailed(true) }}>Неуспешные</Button>
-      </div>
-      <Button type="button" variant="outline" size="icon" className="ml-auto" onClick={() => void load()} aria-label="Обновить" title="Обновить"><RefreshCw size={16} className={loading ? 'animate-spin' : undefined} /></Button>
-    </div>
-  )
+  const fetchPage = useCallback((query: RsqlTableQuery) => {
+    const filter = [onlyFailed ? 'status==failed' : '', query.filter].filter(Boolean).join(';')
+    return getPayouts({ ...query, filter: filter || undefined })
+  }, [onlyFailed])
 
   return (
-    <ListScreen toolbar={toolbar} error={error} footer={<Pager pagination={pagination} onPage={setPage} disabled={loading} />}>
-      {loading && rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
-      ) : rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Выплат нет.</li>
-      ) : rows.map((item) => (
-        <li key={item.payout.payoutExecutionId}>
-          <ListRow
-            onClick={() => onOpen(item.payout.payoutExecutionId)}
-            title={formatRubles(item.payout.amount)}
-            subtitle={item.seller?.displayName}
-            badges={<Badge variant={payoutVariant(item.payout.status)}>{item.payout.status}</Badge>}
-            fields={[
-              { label: 'Бронь', value: item.bookingNumber ? `№ ${item.bookingNumber}` : '—' },
-              { label: 'Создана', value: formatDateTime(item.payout.createdAt) },
-              { label: 'Оплачена', value: formatDateTime(item.payout.paidAt) },
-              { label: 'Реф', value: item.payout.externalPayoutRef ?? '—' },
-            ]}
-          />
-        </li>
-      ))}
-    </ListScreen>
+    <section className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
+      <div className="flex gap-1 border-b px-2 py-2 sm:px-3">
+        <Button type="button" size="sm" variant={onlyFailed ? 'ghost' : 'secondary'} onClick={() => setOnlyFailed(false)}>Все</Button>
+        <Button type="button" size="sm" variant={onlyFailed ? 'secondary' : 'ghost'} onClick={() => setOnlyFailed(true)}>Неуспешные</Button>
+      </div>
+      <ServerDataTable
+        columns={COLUMNS}
+        getRowKey={(row) => row.payout.payoutExecutionId}
+        onRowOpen={(row) => onOpen(row.payout.payoutExecutionId)}
+        fetchPage={fetchPage}
+        emptyText="Выплат нет."
+        pageSizeOptions={[20, 50, 100]}
+        initialPageSize={20}
+        reloadKey={onlyFailed ? 'failed' : 'all'}
+      />
+    </section>
   )
 }
 

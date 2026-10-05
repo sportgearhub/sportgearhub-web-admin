@@ -1,77 +1,47 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ExternalLink, RefreshCw } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
-import { getFiscalReceipt, getFiscalReceipts, type FiscalReceipt, type PaginationResponse } from '../adminApi'
+import { getFiscalReceipt, getFiscalReceipts, type FiscalReceipt } from '../adminApi'
 import { formatDateTime, formatRubles } from '../shared/format'
-import { ListRow, ListScreen, Pager } from '../shared/ListRow'
+import { ServerDataTable } from '../shared/ServerDataTable'
+import type { RsqlColumn, RsqlTableQuery } from '../shared/RsqlDataTable'
 import { DetailScreen, Field, Panel } from '../shared/detail'
 import { receiptStatusVariant } from './receiptLabels'
 
-const PAGE_SIZE = 50
+const COLUMNS: Array<RsqlColumn<FiscalReceipt>> = [
+  { key: 'operation', label: 'Операция', field: 'operation', filterable: false, sortable: false, width: '24%', value: (row) => row.operation, render: (row) => <div className="min-w-0"><strong className="block truncate text-sm font-medium">{row.operation}</strong><small className="block text-xs text-muted-foreground">{formatRubles(row.total)}</small></div> },
+  { key: 'status', label: 'Статус', field: 'status', filterable: false, sortable: false, width: '14%', value: (row) => row.status, render: (row) => <Badge variant={receiptStatusVariant(row.status)}>{row.status}</Badge> },
+  { key: 'seller', label: 'Продавец', field: 'seller_id', filterable: false, sortable: false, width: '22%', value: (row) => row.seller?.displayName, render: (row) => <span className="truncate text-sm">{row.seller?.displayName ?? '—'}</span> },
+  { key: 'booking', label: 'Бронь', field: 'booking_number', filterable: false, sortable: false, width: '12%', value: (row) => row.bookingNumber, render: (row) => <span className="text-sm">{row.bookingNumber ? `№ ${row.bookingNumber}` : '—'}</span> },
+  { key: 'attempts', label: 'Попыток', field: 'attempts', filterable: false, sortable: false, align: 'right', width: '10%', value: (row) => row.attempts, render: (row) => <span className="text-sm tabular-nums">{row.attempts}</span> },
+  { key: 'created', label: 'Создан', field: 'created_at', filterable: false, sortable: false, width: '18%', value: (row) => row.createdAt, render: (row) => <span className="text-xs text-muted-foreground">{formatDateTime(row.createdAt)}</span> },
+]
 
 export function ReceiptsPage({ onOpen }: { onOpen: (receiptId: string) => void }) {
-  const [rows, setRows] = useState<FiscalReceipt[]>([])
-  const [pagination, setPagination] = useState<PaginationResponse | null>(null)
-  const [page, setPage] = useState(1)
   const [onlyFailed, setOnlyFailed] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result = await getFiscalReceipts({ filter: onlyFailed ? 'status==Failed' : undefined, page, pageSize: PAGE_SIZE })
-      setRows(result.items)
-      setPagination(result.pagination)
-      setError('')
-    } catch (failure) {
-      setRows([])
-      setPagination(null)
-      setError(failure instanceof Error ? failure.message : 'Не удалось загрузить чеки')
-    } finally {
-      setLoading(false)
-    }
-  }, [onlyFailed, page])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
-  }, [load])
-
-  const toolbar = (
-    <div className="flex items-center gap-2 p-2 sm:p-3">
-      <div className="flex gap-1">
-        <Button type="button" size="sm" variant={onlyFailed ? 'ghost' : 'secondary'} onClick={() => { setPage(1); setOnlyFailed(false) }}>Все</Button>
-        <Button type="button" size="sm" variant={onlyFailed ? 'secondary' : 'ghost'} onClick={() => { setPage(1); setOnlyFailed(true) }}>С ошибкой</Button>
-      </div>
-      <Button type="button" variant="outline" size="icon" className="ml-auto" onClick={() => void load()} aria-label="Обновить" title="Обновить"><RefreshCw size={16} className={loading ? 'animate-spin' : undefined} /></Button>
-    </div>
-  )
+  const fetchPage = useCallback((query: RsqlTableQuery) => {
+    const filter = [onlyFailed ? 'status==Failed' : '', query.filter].filter(Boolean).join(';')
+    return getFiscalReceipts({ ...query, filter: filter || undefined })
+  }, [onlyFailed])
 
   return (
-    <ListScreen toolbar={toolbar} error={error} footer={<Pager pagination={pagination} onPage={setPage} disabled={loading} />}>
-      {loading && rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Загружаем…</li>
-      ) : rows.length === 0 ? (
-        <li className="py-12 text-center text-sm text-muted-foreground">Чеков нет.</li>
-      ) : rows.map((receipt) => (
-        <li key={receipt.receiptId}>
-          <ListRow
-            onClick={() => onOpen(receipt.receiptId)}
-            title={`${receipt.operation} · ${formatRubles(receipt.total)}`}
-            subtitle={receipt.seller?.displayName}
-            badges={<Badge variant={receiptStatusVariant(receipt.status)}>{receipt.status}</Badge>}
-            fields={[
-              { label: 'Бронь', value: receipt.bookingNumber ? `№ ${receipt.bookingNumber}` : '—' },
-              { label: 'Попыток', value: receipt.attempts },
-              { label: 'Создан', value: formatDateTime(receipt.createdAt) },
-              { label: 'Ошибка', value: receipt.error ?? '—' },
-            ]}
-          />
-        </li>
-      ))}
-    </ListScreen>
+    <section className="flex min-h-[calc(100dvh-3.5rem)] min-w-0 flex-col overflow-hidden bg-card">
+      <div className="flex gap-1 border-b px-2 py-2 sm:px-3">
+        <Button type="button" size="sm" variant={onlyFailed ? 'ghost' : 'secondary'} onClick={() => setOnlyFailed(false)}>Все</Button>
+        <Button type="button" size="sm" variant={onlyFailed ? 'secondary' : 'ghost'} onClick={() => setOnlyFailed(true)}>С ошибкой</Button>
+      </div>
+      <ServerDataTable
+        columns={COLUMNS}
+        getRowKey={(row) => row.receiptId}
+        onRowOpen={(row) => onOpen(row.receiptId)}
+        fetchPage={fetchPage}
+        emptyText="Чеков нет."
+        pageSizeOptions={[20, 50, 100]}
+        initialPageSize={20}
+        reloadKey={onlyFailed ? 'failed' : 'all'}
+      />
+    </section>
   )
 }
 
