@@ -3,11 +3,17 @@ import { Button } from './components/ui/button'
 import { Card, CardContent, CardHeader } from './components/ui/card'
 import { navGroups, navItems } from './data/adminConfig'
 import { CatalogPage } from './features/admin/catalog/CatalogPage'
-import { FinancePage } from './features/admin/finance/FinancePage'
+import { BookingDetailPage, BookingsPage } from './features/admin/finance/BookingsPage'
+import { PaymentLookup } from './features/admin/finance/PaymentLookup'
+import { PayoutDetailPage, PayoutsPage } from './features/admin/finance/PayoutsPage'
+import { ReceiptDetailPage, ReceiptsPage } from './features/admin/finance/ReceiptsPage'
+import { SettlementDetailPage, SettlementsPage } from './features/admin/finance/SettlementsPage'
 import { OverviewPage } from './features/admin/overview/OverviewPage'
+import { ProductDetailPage } from './features/admin/products/ProductDetailPage'
 import { ProductReviewPage } from './features/admin/products/ProductReviewPage'
 import { SellerCardPage } from './features/admin/sellers/SellerCardPage'
 import { SellersPage } from './features/admin/sellers/SellersPage'
+import { UserDetailPage } from './features/admin/users/UserDetailPage'
 import { UserManagementPage } from './features/admin/users/UserManagementPage'
 import { SignInPage } from './features/auth/SignInPage'
 import { AuthFrame } from './features/auth/AuthFrame'
@@ -31,7 +37,11 @@ const SECTION_PATHS: Record<AdminSectionId, string> = {
   onboarding: `${CONSOLE_PATH}/onboarding`,
   products: `${CONSOLE_PATH}/products`,
   sellers: `${CONSOLE_PATH}/sellers`,
-  finance: `${CONSOLE_PATH}/finance`,
+  bookings: `${CONSOLE_PATH}/bookings`,
+  settlements: `${CONSOLE_PATH}/settlements`,
+  payouts: `${CONSOLE_PATH}/payouts`,
+  receipts: `${CONSOLE_PATH}/receipts`,
+  payments: `${CONSOLE_PATH}/payments`,
   users: `${CONSOLE_PATH}/users`,
   catalog: `${CONSOLE_PATH}/catalog`,
 }
@@ -40,16 +50,13 @@ function normalizePath(path: string) {
   return path.replace(/\/+$/, '') || '/'
 }
 
-function sectionFromPath(path: string): AdminSectionId {
-  const found = (Object.entries(SECTION_PATHS) as Array<[AdminSectionId, string]>)
-    .filter(([id]) => id !== 'overview')
-    .find(([, prefix]) => path === prefix || path.startsWith(`${prefix}/`))
-  return found?.[0] ?? 'overview'
-}
-
-function sellerIdFromPath(path: string) {
-  const match = /^\/console\/sellers\/([^/]+)$/.exec(path)
-  return match ? decodeURIComponent(match[1]) : ''
+/** `/console/<section>/<id?>` → the active section and an optional detail id. */
+function parseRoute(path: string): { section: AdminSectionId; detailId: string } {
+  const rest = normalizePath(path).replace(/^\/console\/?/, '')
+  if (!rest) return { section: 'overview', detailId: '' }
+  const [seg, rawId] = rest.split('/')
+  const entry = (Object.entries(SECTION_PATHS) as Array<[AdminSectionId, string]>).find(([, prefix]) => prefix === `${CONSOLE_PATH}/${seg}`)
+  return { section: entry?.[0] ?? 'overview', detailId: rawId ? decodeURIComponent(rawId) : '' }
 }
 
 function pushPath(path: string) {
@@ -62,20 +69,16 @@ function App() {
   const [session, setSession] = useState<AdminSession | null>(null)
   const [restoring, setRestoring] = useState(true)
   const [path, setPath] = useState(() => normalizePath(window.location.pathname))
-  const [topBarContent, setTopBarContent] = useState<React.ReactNode | null>(null)
-  const section = sectionFromPath(path)
+  const { section, detailId } = parseRoute(path)
   const currentSection = navItems.find((item) => item.id === section) ?? navItems[0]
-  const sellerId = sellerIdFromPath(path)
 
   const navigateTo = useCallback((next: string) => {
     pushPath(next)
     setPath(next)
   }, [])
 
-  // SellerCardPage pushes its breadcrumb through an effect that lists onBack in its deps, so this
-  // callback must be stable — an inline arrow here would make the effect re-run every render, call
-  // setTopBarContent again, and loop until React throws (#185).
-  const backToSellers = useCallback(() => navigateTo(SECTION_PATHS.sellers), [navigateTo])
+  const openSection = useCallback((next: AdminSectionId) => navigateTo(SECTION_PATHS[next]), [navigateTo])
+  const openDetail = useCallback((next: AdminSectionId, id: string) => navigateTo(`${SECTION_PATHS[next]}/${encodeURIComponent(id)}`), [navigateTo])
 
   useEffect(() => {
     const onChange = () => setPath(normalizePath(window.location.pathname))
@@ -117,7 +120,6 @@ function App() {
     await signOutCurrentUser().catch(() => undefined)
     clearStoredAuthTokens()
     setSession(null)
-    setTopBarContent(null)
     navigateTo(SIGN_IN_PATH)
   }
 
@@ -171,43 +173,66 @@ function App() {
     )
   }
 
+  function renderSection() {
+    switch (section) {
+      case 'overview':
+        return (
+          <OverviewPage
+            onOpenOnboarding={() => openSection('onboarding')}
+            onOpenSellers={() => openSection('sellers')}
+            onOpenProducts={() => openSection('products')}
+            onOpenSeller={(id) => openDetail('sellers', id)}
+          />
+        )
+      case 'onboarding':
+        return <SellersPage mode="onboarding" onOpenSeller={(id) => openDetail('sellers', id)} />
+      case 'products':
+        return detailId
+          ? <ProductDetailPage productId={detailId} onBack={() => openSection('products')} onOpenSeller={(id) => openDetail('sellers', id)} />
+          : <ProductReviewPage onOpen={(id) => openDetail('products', id)} />
+      case 'sellers':
+        return detailId
+          ? <SellerCardPage sellerId={detailId} onBack={() => openSection('sellers')} />
+          : <SellersPage mode="all" onOpenSeller={(id) => openDetail('sellers', id)} />
+      case 'bookings':
+        return detailId
+          ? <BookingDetailPage bookingId={detailId} onBack={() => openSection('bookings')} onOpenPayment={(id) => openDetail('payments', id)} onOpenSeller={(id) => openDetail('sellers', id)} />
+          : <BookingsPage onOpen={(id) => openDetail('bookings', id)} />
+      case 'settlements':
+        return detailId
+          ? <SettlementDetailPage settlementPlanId={detailId} onBack={() => openSection('settlements')} onOpenBooking={(id) => openDetail('bookings', id)} />
+          : <SettlementsPage onOpen={(id) => openDetail('settlements', id)} />
+      case 'payouts':
+        return detailId
+          ? <PayoutDetailPage payoutExecutionId={detailId} onBack={() => openSection('payouts')} onOpenBooking={(id) => openDetail('bookings', id)} />
+          : <PayoutsPage onOpen={(id) => openDetail('payouts', id)} />
+      case 'receipts':
+        return detailId
+          ? <ReceiptDetailPage receiptId={detailId} onBack={() => openSection('receipts')} onOpenBooking={(id) => openDetail('bookings', id)} />
+          : <ReceiptsPage onOpen={(id) => openDetail('receipts', id)} />
+      case 'payments':
+        return <PaymentLookup seedBookingId={detailId || undefined} />
+      case 'users':
+        return detailId
+          ? <UserDetailPage userId={detailId} onBack={() => openSection('users')} onOpenSeller={(id) => openDetail('sellers', id)} />
+          : <UserManagementPage onOpen={(id) => openDetail('users', id)} />
+      case 'catalog':
+        return <CatalogPage />
+      default:
+        return null
+    }
+  }
+
   return (
     <ConsoleShell
       activeSection={section}
       currentSection={currentSection}
       navGroups={navGroups}
       operator={session}
-      topBarContent={topBarContent}
-      onSectionChange={(next) => {
-        setTopBarContent(null)
-        navigateTo(SECTION_PATHS[next])
-      }}
+      onSectionChange={openSection}
       onSignOut={() => void signOut()}
     >
-      {section === 'overview' ? (
-        <OverviewPage
-          onOpenOnboarding={() => navigateTo(SECTION_PATHS.onboarding)}
-          onOpenSellers={() => navigateTo(SECTION_PATHS.sellers)}
-          onOpenProducts={() => navigateTo(SECTION_PATHS.products)}
-          onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)}
-        />
-      ) : section === 'onboarding' ? (
-        <SellersPage mode="onboarding" onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)} />
-      ) : section === 'products' ? (
-        <ProductReviewPage />
-      ) : section === 'sellers' ? (
-        sellerId ? (
-          <SellerCardPage sellerId={sellerId} onBack={backToSellers} onTopBarContentChange={setTopBarContent} />
-        ) : (
-          <SellersPage mode="all" onOpenSeller={(id) => navigateTo(`${SECTION_PATHS.sellers}/${encodeURIComponent(id)}`)} />
-        )
-      ) : section === 'finance' ? (
-        <FinancePage />
-      ) : section === 'users' ? (
-        <UserManagementPage />
-      ) : (
-        <CatalogPage />
-      )}
+      {renderSection()}
     </ConsoleShell>
   )
 }

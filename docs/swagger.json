@@ -2379,6 +2379,118 @@
         ]
       }
     },
+    "/internal/fiscal-receipts": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalFiscalizationGetInternalFiscalReceiptsEndpoint",
+        "parameters": [
+          {
+            "name": "seller_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "guid",
+              "nullable": true
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "description": "RSQL filter expression. Examples: status==active;name=contains=Ski, status=in=(active,draft).",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Comma-separated allowlisted sort fields. Prefix a field with '-' for descending order. Example: -updatedAt,name.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "One-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Number of items requested per page.",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagedResultOfInternalFiscalReceiptModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/fiscal-receipts/{receipt_id}": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalFiscalizationGetInternalFiscalReceiptEndpoint",
+        "parameters": [
+          {
+            "name": "receipt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalFiscalReceiptModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
     "/internal/equipment-categories": {
       "get": {
         "tags": [
@@ -5380,11 +5492,13 @@
               "$ref": "#/components/schemas/EbashITSportgearhubApiModelsProductsSellerProductSectionResponse"
             }
           },
-          "history": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProductReviewProductReviewResponse"
-            }
+          "review": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalProductReviewProductReviewResponse"
+              }
+            ]
           }
         }
       },
@@ -5411,22 +5525,12 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "opened_at": {
-            "type": "string",
-            "format": "date-time"
+          "message": {
+            "type": "string"
           },
           "decided_at": {
             "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "verdict": {
-            "type": "string",
-            "nullable": true
-          },
-          "message": {
-            "type": "string",
-            "nullable": true
+            "format": "date-time"
           }
         }
       },
@@ -6035,6 +6139,120 @@
         "additionalProperties": false
       },
       "EbashITSportgearhubApiEndpointsInternalLedgerGetLedgerByPaymentRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RsqlParserNetLinqRsqlPagedResultOfInternalFiscalReceiptModel": {
+        "type": "object",
+        "description": "Represents a page of query results with pagination metadata.",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "The items in the current page.",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalFiscalReceiptModel"
+            }
+          },
+          "pagination": {
+            "description": "The pagination metadata.",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/RsqlParserNetLinqRsqlPagination"
+              }
+            ]
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsInternalBookingsInternalFiscalReceiptModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "receipt_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "booking_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "booking_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_intent_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "seller": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingSellerModel"
+              }
+            ]
+          },
+          "operation": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "external_id": {
+            "type": "string"
+          },
+          "total": {
+            "type": "number",
+            "format": "decimal"
+          },
+          "uuid": {
+            "type": "string",
+            "nullable": true
+          },
+          "fiscal_document_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "fiscal_sign": {
+            "type": "string",
+            "nullable": true
+          },
+          "ofd_receipt_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_attempt_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "EbashITSportgearhubApiEndpointsInternalFiscalizationGetInternalFiscalReceiptsRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiEndpointsInternalFiscalizationGetInternalFiscalReceiptRequest": {
         "type": "object",
         "additionalProperties": false
       },
@@ -6814,6 +7032,12 @@
                 "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalBookingFulfillmentModel"
               }
             ]
+          },
+          "receipts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalBookingsInternalFiscalReceiptModel"
+            }
           },
           "created_at": {
             "type": "string",

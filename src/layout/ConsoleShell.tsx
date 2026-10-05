@@ -12,7 +12,6 @@ type ConsoleShellProps = {
   currentSection: NavItem
   navGroups: NavGroup[]
   operator: AdminSession
-  topBarContent?: React.ReactNode
   onSectionChange: (section: AdminSectionId) => void
   onSignOut: () => void
 }
@@ -72,7 +71,7 @@ function NavList({ navGroups, activeSection, collapsed, onSelect }: { navGroups:
   )
 }
 
-export function ConsoleShell({ children, activeSection, currentSection, navGroups, operator, topBarContent, onSectionChange, onSignOut }: ConsoleShellProps) {
+export function ConsoleShell({ children, activeSection, currentSection, navGroups, operator, onSectionChange, onSignOut }: ConsoleShellProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -138,7 +137,7 @@ export function ConsoleShell({ children, activeSection, currentSection, navGroup
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-card/95 px-2 backdrop-blur sm:px-4">
           <Button type="button" variant="ghost" size="icon" className="lg:hidden" onClick={() => setDrawerOpen(true)} aria-label="Открыть меню"><Menu size={20} /></Button>
           <div className="min-w-0 flex-1">
-            {topBarContent ?? <h1 className="truncate text-sm font-semibold sm:text-base">{currentSection.label}</h1>}
+            <h1 className="truncate text-sm font-semibold sm:text-base">{currentSection.label}</h1>
           </div>
           <div className="hidden items-center gap-3 sm:flex">
             <div className="min-w-0 text-right">

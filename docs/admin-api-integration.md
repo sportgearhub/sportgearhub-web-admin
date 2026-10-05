@@ -63,23 +63,59 @@ POST /internal/products/{product_id}/actions
 { "action": "request_changes", "message": "На фотографии другой велосипед." }
 ```
 
-| `action` | Result |
-|---|---|
-| `approve` | → `active`, on sale immediately |
-| `request_changes` | → `changes_requested`, with the message |
-| `reject` | → `rejected` |
-| `suspend` | → `suspended` |
+| `action` | From | Result |
+|---|---|---|
+| `approve` | `pending_review` | → `active`, on sale immediately |
+| `request_changes` | `pending_review` **or `active`** | → `changes_requested`, with the message |
+| `reject` | `pending_review` or `active` | → `rejected` |
+| `suspend` | any | → `suspended` |
+| `restore` | `suspended` | → `paused` |
+| `revert` | `changes_requested` or `rejected` | → back to whatever the card held before that decision |
 
 `request-changes` with a hyphen is accepted as well as `request_changes`; prefer the underscore.
+
+**`request_changes` works on a card already on sale** — that is how you pull one back when something
+changed under you. It still requires a message, so a card cannot be withdrawn silently, and
+`changes_requested` hides it from customers immediately. Until 2026-10-05 this section told you to do
+this and the API refused it (*"Only a rental product waiting for review can be decided"*).
+
+**`restore` is the only way out of `suspended`.** It was previously a dead end: no admin action, no
+seller action, and the seller-facing refusal even said *"Suspended offers can only be reactivated by
+the platform"* while the platform had no means to.
+
+It lands on `paused`, not `active`, on purpose — returning a card straight to sale would mean
+republishing it without looking. From `paused` the seller turns it back on themselves.
+
+`approve` on a card already on sale is refused: there is no decision to record.
+
+**`revert` undoes your own decision** and puts the card back where it was — *not* into the review
+queue by default. Pull a live card back by mistake and `revert` returns it to `active`; send a
+submitted one back and `revert` returns it to `pending_review`. The card remembers which, so you do
+not have to, and the seller is not marched round the queue again for your slip.
+
+It needs a decision standing against the card: `revert` on an `active`, `draft` or `paused` card is
+refused, because otherwise it would be the free-form status write this API deliberately lacks. The
+outstanding request is cleared along with it, so the seller stops seeing a message about a card
+nobody is waiting on.
+
+**There is no endpoint that sets a status directly, and that is deliberate.** Publication is gated on
+completeness (`submit-for-review` refuses a card with gaps), so a free-form status write could put a
+card with no price or no photos in front of customers. Every transition is a named action carrying
+its own preconditions.
 
 A card is submitted by its seller only when every section is complete, so a card in the queue is
 already whole. What you are judging is content, not completeness.
 
+`GET /internal/products/{product_id}` carries `review` — the request currently outstanding against
+the card, or `null`. There is **one** per card: a new `request_changes` replaces the previous text,
+and `approve` clears it. Earlier rounds are not kept, and the verdict is not repeated there because
+the card's `status` is the verdict.
+
 > **A seller can edit an `active` card and the edit goes live without coming back here.** That is a
 > known gap, not a feature: your approval covers the card as it was when you saw it. A draft-and-review
 > mechanism is designed but not built — `docs/product-drafts.design.md`. Until it ships, treat an
-> approval as a judgement on a moment, and use `active` → `request_changes` when something changes
-> under you.
+> approval as a judgement on a moment, and use `active` → `request_changes` (which now works) when
+> something changes under you.
 
 ---
 
@@ -270,8 +306,30 @@ bookings: scoping by seller is an `EXISTS` over settlement plans, not a conditio
 
 ## Fiscal receipts (54-FZ, ATOL)
 
-There is **no endpoint for these yet** — this section exists so you know the table is there and what
-it means when a receipt is stuck.
+```
+GET /internal/fiscal-receipts?filter=…&sort=…&seller_id=…
+GET /internal/fiscal-receipts/{receipt_id}
+```
+
+The list is built for one question — **what did not go through**:
+
+```
+GET /internal/fiscal-receipts?filter=status==Failed&sort=-created_at
+```
+
+Filterable: `receipt_id`, `booking_id`, `payment_intent_id`, `seller_id`, `operation`, `status`,
+`external_id`, `provider`, `uuid`, `fiscal_document_number`, `total`, `attempts`, `created_at`,
+`last_attempt_at`, `completed_at`. Note `status` values are PascalCase here (`Failed`, `Done`,
+`Pending`, `Registered`) because that is how they are stored; the customer- and seller-facing
+responses lower-case them.
+
+Each row carries the operator's `error` verbatim, the `attempts` count and the provider's `uuid` —
+**none of which the customer or the seller can see.** Their responses carry the OFD link and the
+status and nothing else, on purpose: «validation.failed: Указан некорректный ИНН» is a message for
+you, not for a renter. Rows also carry the booking number and the seller, so a row is actionable
+without a second lookup.
+
+The same rows appear inline on `GET /internal/bookings/{booking_id}`, in the same admin shape.
 
 A `payments.fiscal_receipts` row is written in the same transaction as the payment transition that
 caused it: `captured` → a «Приход» receipt, `refunded` / `partially_refunded` → «Возврат прихода». A

@@ -566,7 +566,7 @@ export type ProductStatus =
   | 'archived'
   | (string & {})
 
-export type ProductAction = 'approve' | 'request_changes' | 'reject' | 'suspend'
+export type ProductAction = 'approve' | 'request_changes' | 'reject' | 'suspend' | 'restore' | 'revert'
 
 export type ProductReviewQueueItem = {
   productId: string
@@ -584,11 +584,12 @@ export type ProductSection = {
   missing: string | null
 }
 
+/** The one request currently outstanding against the card, or null. Not a history — a new
+ * `request_changes` replaces the previous text, and `approve`/`revert` clears it. The verdict is the
+ * card's `status`, so it is not repeated here. */
 export type ProductReview = {
-  openedAt: string
-  decidedAt: string | null
-  verdict: string | null
   message: string | null
+  decidedAt: string | null
 }
 
 export type ProductReviewCard = {
@@ -600,7 +601,7 @@ export type ProductReviewCard = {
   quantity: number
   status: ProductStatus
   sections: ProductSection[]
-  history: ProductReview[]
+  review: ProductReview | null
 }
 
 /** Paged, oldest-first; `status` defaults to `pending_review` server-side when omitted. */
@@ -932,6 +933,30 @@ export type BookingSummary = {
   updatedAt: string
 }
 
+/** 54-FZ / ATOL fiscal receipt. Tracking only — the legal document lives at ATOL/OFD. `Failed` needs
+ * a human (the reason is in `error`); a receipt stuck at `Pending` usually means ATOL is not configured. */
+export type FiscalReceipt = {
+  receiptId: string
+  bookingId: string
+  bookingNumber: string
+  paymentIntentId: string | null
+  seller: BookingSeller | null
+  operation: string
+  status: 'Pending' | 'Registered' | 'Done' | 'Failed' | (string & {})
+  provider: string | null
+  externalId: string | null
+  total: number
+  uuid: string | null
+  fiscalDocumentNumber: string | null
+  fiscalSign: string | null
+  ofdReceiptUrl: string | null
+  error: string | null
+  attempts: number
+  createdAt: string
+  lastAttemptAt: string | null
+  completedAt: string | null
+}
+
 export type BookingDetail = {
   bookingId: string
   bookingNumber: string
@@ -951,6 +976,7 @@ export type BookingDetail = {
   payment: BookingPayment | null
   settlement: BookingSettlement | null
   fulfillment: BookingFulfillment | null
+  receipts: FiscalReceipt[]
   createdAt: string
   updatedAt: string
 }
@@ -981,6 +1007,14 @@ export function getPayouts(params: ListQueryParams = {}, sellerId?: string) {
 
 export function getPayout(payoutExecutionId: string) {
   return requestJson<PayoutSummary>(`/internal/payouts/${id(payoutExecutionId)}`)
+}
+
+export function getFiscalReceipts(params: ListQueryParams = {}, sellerId?: string) {
+  return requestJson<PagedResult<FiscalReceipt>>(`/internal/fiscal-receipts${listQuery(params, sellerId ? { seller_id: sellerId } : undefined)}`)
+}
+
+export function getFiscalReceipt(receiptId: string) {
+  return requestJson<FiscalReceipt>(`/internal/fiscal-receipts/${id(receiptId)}`)
 }
 
 

@@ -1,6 +1,17 @@
 import type { ComponentType } from 'react'
 
-export type AdminSectionId = 'overview' | 'onboarding' | 'products' | 'sellers' | 'finance' | 'users' | 'catalog'
+export type AdminSectionId =
+  | 'overview'
+  | 'onboarding'
+  | 'products'
+  | 'sellers'
+  | 'bookings'
+  | 'settlements'
+  | 'payouts'
+  | 'receipts'
+  | 'payments'
+  | 'users'
+  | 'catalog'
 
 export type NavIcon = ComponentType<{ size?: number | string; className?: string }>
 

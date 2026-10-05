@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
@@ -23,6 +23,7 @@ import {
   type SellerPayoutOverrides,
 } from '../adminApi'
 import { formatDateTime } from '../shared/format'
+import { DetailScreen } from '../shared/detail'
 import {
   memberRoleLabel,
   missingFieldLabels,
@@ -64,14 +65,13 @@ const ACTION_DONE: Record<SellerAction, string> = {
 type SellerCardPageProps = {
   sellerId: string
   onBack: () => void
-  onTopBarContentChange?: (content: React.ReactNode | null) => void
 }
 
 /**
  * The cabinet as the reviewer sees it — what the seller sees, plus who is behind it — with the
  * decision in the header, the bank on its own tab, and the acquirer bindings on theirs.
  */
-export function SellerCardPage({ sellerId, onBack, onTopBarContentChange }: SellerCardPageProps) {
+export function SellerCardPage({ sellerId, onBack }: SellerCardPageProps) {
   const { notify } = useNotifications()
   const [card, setCard] = useState<SellerCard | null>(null)
   const [payout, setPayout] = useState<SellerPayout | null>(null)
@@ -107,26 +107,6 @@ export function SellerCardPage({ sellerId, onBack, onTopBarContentChange }: Sell
     return () => window.clearTimeout(timer)
   }, [load])
 
-  useEffect(() => {
-    onTopBarContentChange?.(
-      <div className="flex min-w-0 items-center gap-2">
-        <Button type="button" variant="ghost" size="sm" onClick={onBack}>
-          <ChevronLeft size={16} aria-hidden="true" /> Назад
-        </Button>
-        <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="shrink-0 text-muted-foreground">Продавцы</span>
-          <span className="shrink-0 text-muted-foreground">›</span>
-          <strong className="truncate font-semibold">{card?.profile.displayName ?? 'Кабинет'}</strong>
-          {card ? <Badge variant={sellerStatusVariant(card.profile.status)}>{sellerStatusLabel(card.profile.status)}</Badge> : null}
-        </div>
-        <Button type="button" variant="ghost" size="icon" className="ml-auto" onClick={() => void load()} aria-label="Обновить" title="Обновить">
-          <RefreshCw size={16} className={loading ? 'animate-spin' : undefined} />
-        </Button>
-      </div>,
-    )
-    return () => onTopBarContentChange?.(null)
-  }, [card, loading, load, onBack, onTopBarContentChange])
-
   async function apply(action: SellerAction, text?: string) {
     setBusy(true)
     try {
@@ -157,65 +137,53 @@ export function SellerCardPage({ sellerId, onBack, onTopBarContentChange }: Sell
     }
   }
 
-  if (loading && !card) {
-    return <section className="p-6 text-sm text-muted-foreground">Загружаем кабинет…</section>
-  }
-  if (!card) {
-    return (
-      <section className="p-6">
-        <h2 className="text-lg font-semibold">Кабинет недоступен</h2>
-        <p className="mt-1 text-sm text-destructive">{error}</p>
-      </section>
-    )
-  }
-
-  const status = card.profile.status
-  const available = ACTIONS.filter((item) => item.from.includes(status))
+  const available = card ? ACTIONS.filter((item) => item.from.includes(card.profile.status)) : []
   const pendingAction = ACTIONS.find((item) => item.action === pending)
 
   return (
-    <section className="min-h-[calc(100vh-3.5rem)] bg-background">
-      <div className="sticky top-14 z-20 flex flex-col gap-2 border-b bg-card/95 px-3 py-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center sm:px-4">
-        <div className="no-scrollbar -mx-3 flex gap-1 overflow-x-auto px-3 sm:mx-0 sm:px-0" role="tablist">
-          {([['summary', 'Обзор'], ['payout', 'Выплаты'], ['acquiring', 'Эквайринг'], ['members', 'Доступы']] as Array<[Tab, string]>).map(([id, label]) => (
-            <Button key={id} type="button" size="sm" variant={tab === id ? 'secondary' : 'ghost'} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="shrink-0">{label}</Button>
+    <DetailScreen
+      onBack={onBack}
+      title={card?.profile.displayName ?? 'Кабинет'}
+      subtitle={card ? sellerKindLabel(card.seller?.kind) : undefined}
+      badges={card ? <Badge variant={sellerStatusVariant(card.profile.status)}>{sellerStatusLabel(card.profile.status)}</Badge> : null}
+      loading={loading && !card}
+      error={!card ? error : undefined}
+      actions={card ? (
+        <>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void load()} aria-label="Обновить" title="Обновить"><RefreshCw size={16} className={loading ? 'animate-spin' : undefined} /></Button>
+          {available.map((item) => (
+            <Button key={item.action} type="button" size="sm" variant={item.tone ?? 'default'} disabled={busy} onClick={() => (item.needsMessage || item.needsConfirm ? setPending(item.action) : void apply(item.action))}>{item.label}</Button>
           ))}
-        </div>
-        {available.length > 0 ? (
-          <div className="no-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:ml-auto sm:flex-wrap sm:px-0">
-            {available.map((item) => (
-              <Button
-                key={item.action}
-                type="button"
-                size="sm"
-                variant={item.tone ?? 'default'}
-                disabled={busy}
-                onClick={() => (item.needsMessage || item.needsConfirm ? setPending(item.action) : void apply(item.action))}
-              >
-                {item.label}
-              </Button>
+        </>
+      ) : null}
+    >
+      {card ? (
+        <>
+          <div className="no-scrollbar -mx-1 mb-4 flex gap-1 overflow-x-auto px-1" role="tablist">
+            {([['summary', 'Обзор'], ['payout', 'Выплаты'], ['acquiring', 'Эквайринг'], ['members', 'Доступы']] as Array<[Tab, string]>).map(([id, label]) => (
+              <Button key={id} type="button" size="sm" variant={tab === id ? 'secondary' : 'ghost'} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="shrink-0">{label}</Button>
             ))}
           </div>
-        ) : null}
-      </div>
 
-      {tab === 'summary' ? <SummaryTab card={card} /> : null}
-      {tab === 'payout' ? (
-        <PayoutTab
-          card={card}
-          payout={payout}
-          error={payoutError}
-          busy={busy}
-          onRegister={(overrides) => runPayout(() => postSellerPayoutRegister(sellerId, overrides), payout?.registration.method === 'sbp' ? 'Получатель СБП активирован' : 'Точка зарегистрирована в Т-Банке')}
-          onSync={() => runPayout(() => postSellerPayoutSyncBankAccount(sellerId), 'Счёт обновлён в Т-Банке')}
-        />
+          {tab === 'summary' ? <SummaryTab card={card} /> : null}
+          {tab === 'payout' ? (
+            <PayoutTab
+              card={card}
+              payout={payout}
+              error={payoutError}
+              busy={busy}
+              onRegister={(overrides) => runPayout(() => postSellerPayoutRegister(sellerId, overrides), payout?.registration.method === 'sbp' ? 'Получатель СБП активирован' : 'Точка зарегистрирована в Т-Банке')}
+              onSync={() => runPayout(() => postSellerPayoutSyncBankAccount(sellerId), 'Счёт обновлён в Т-Банке')}
+            />
+          ) : null}
+          {tab === 'acquiring' ? <AcquiringTab sellerId={sellerId} /> : null}
+          {tab === 'members' ? <MembersTab card={card} /> : null}
+        </>
       ) : null}
-      {tab === 'acquiring' ? <AcquiringTab sellerId={sellerId} /> : null}
-      {tab === 'members' ? <MembersTab card={card} /> : null}
 
       {pendingAction ? (
         <Dialog open onOpenChange={(open) => { if (!open) setPending(null) }}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>{pendingAction.label}</DialogTitle>
             </DialogHeader>
@@ -238,7 +206,7 @@ export function SellerCardPage({ sellerId, onBack, onTopBarContentChange }: Sell
           </DialogContent>
         </Dialog>
       ) : null}
-    </section>
+    </DetailScreen>
   )
 }
 
@@ -267,7 +235,7 @@ function SummaryTab({ card }: { card: SellerCard }) {
   const seller = card.seller
   const isBusiness = seller ? seller.kind === 'sole_proprietor' || seller.kind === 'company' : false
   return (
-    <div className="grid gap-4 p-4 lg:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       <Section title="Кабинет">
         <dl>
           <Row label="Название" value={card.profile.displayName} />
@@ -349,7 +317,7 @@ function PayoutTab({
 }) {
   const [overrides, setOverrides] = useState<SellerPayoutOverrides>({})
   if (!payout) {
-    return <div className="p-4"><p className="text-sm text-destructive">{error || 'Данные о выплатах недоступны.'}</p></div>
+    return <div><p className="text-sm text-destructive">{error || 'Данные о выплатах недоступны.'}</p></div>
   }
 
   const { details, registration } = payout
@@ -357,7 +325,7 @@ function PayoutTab({
   const preview = registration.preview
 
   return (
-    <div className="grid gap-4 p-4 lg:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       <Section title="Реквизиты продавца" aside={<Badge variant={details.hasDetails ? 'success' : 'secondary'}>{details.hasDetails ? 'Указаны' : 'Не указаны'}</Badge>}>
         <dl>
           <Row label="Способ" value={isSbp ? 'СБП на телефон' : 'Расчётный счёт'} />
@@ -471,7 +439,7 @@ function AcquiringTab({ sellerId }: { sellerId: string }) {
   }
 
   return (
-    <div className="grid gap-4 p-4 lg:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       <Section title="Привязка сделки">
         <p className="mb-3 text-sm text-muted-foreground">
           Сделка связывает продавца с мультисплит-договором эквайера. Необратимо из консоли — ошибку исправляет эквайер.
@@ -585,7 +553,7 @@ function AcquiringTab({ sellerId }: { sellerId: string }) {
 
 function MembersTab({ card }: { card: SellerCard }) {
   return (
-    <div className="p-4">
+    <div>
       <Section title="Доступы к кабинету">
         {card.members.length === 0 ? <p className="text-sm text-muted-foreground">Никого нет.</p> : (
           <ul className="divide-y text-sm">
