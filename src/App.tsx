@@ -5,6 +5,7 @@ import { navGroups, navItems } from './data/adminConfig'
 import { CatalogPage } from './features/admin/catalog/CatalogPage'
 import { BookingDetailPage, BookingsPage } from './features/admin/finance/BookingsPage'
 import { PaymentLookup } from './features/admin/finance/PaymentLookup'
+import { DealsPage } from './features/admin/finance/DealsPage'
 import { PayoutDetailPage, PayoutsPage } from './features/admin/finance/PayoutsPage'
 import { ReceiptDetailPage, ReceiptsPage } from './features/admin/finance/ReceiptsPage'
 import { SettlementDetailPage, SettlementsPage } from './features/admin/finance/SettlementsPage'
@@ -41,6 +42,7 @@ const SECTION_PATHS: Record<AdminSectionId, string> = {
   settlements: `${CONSOLE_PATH}/settlements`,
   payouts: `${CONSOLE_PATH}/payouts`,
   receipts: `${CONSOLE_PATH}/receipts`,
+  deals: `${CONSOLE_PATH}/deals`,
   payments: `${CONSOLE_PATH}/payments`,
   users: `${CONSOLE_PATH}/users`,
   catalog: `${CONSOLE_PATH}/catalog`,
@@ -210,6 +212,8 @@ function App() {
         return detailId
           ? <ReceiptDetailPage receiptId={detailId} onBack={() => openSection('receipts')} onOpenBooking={(id) => openDetail('bookings', id)} />
           : <ReceiptsPage onOpen={(id) => openDetail('receipts', id)} />
+      case 'deals':
+        return <DealsPage />
       case 'payments':
         return <PaymentLookup seedBookingId={detailId || undefined} />
       case 'users':

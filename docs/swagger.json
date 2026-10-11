@@ -759,6 +759,78 @@
         ]
       }
     },
+    "/api/v1/media/review-images/{image_id}": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsPublicMediaGetReviewImageContentEndpoint",
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/media/seller-photos/{photo_id}": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsPublicMediaGetSellerPhotoContentEndpoint",
+        "parameters": [
+          {
+            "name": "photo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/media/seller-resource-images/{image_id}": {
+      "get": {
+        "tags": [
+          "Api"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsPublicMediaGetProductImageContentEndpoint",
+        "parameters": [
+          {
+            "name": "image_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v1/addresses/ru/geolocate": {
       "post": {
         "tags": [
@@ -958,6 +1030,37 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalUserManagementUserManagementOptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "JWTBearerAuth": []
+          }
+        ]
+      }
+    },
+    "/internal/deals": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "operationId": "EbashITSportgearhubApiEndpointsInternalSettlementsGetInternalDealsEndpoint",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EbashITSportgearhubApiModelsInternalDealsPlatformDealResponse"
+                  }
                 }
               }
             }
@@ -3638,6 +3741,18 @@
           }
         }
       },
+      "EbashITSportgearhubApiEndpointsPublicMediaGetReviewImageContentRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiEndpointsPublicMediaGetSellerPhotoContentRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EbashITSportgearhubApiEndpointsPublicMediaGetProductImageContentRequest": {
+        "type": "object",
+        "additionalProperties": false
+      },
       "EbashITSportgearhubApiModelsAddressSuggestionsAddressSuggestionListResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -4054,6 +4169,41 @@
           }
         }
       },
+      "EbashITSportgearhubApiModelsInternalDealsPlatformDealResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "bank_deal_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "opened_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closes_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "is_settled": {
+            "type": "boolean"
+          },
+          "health": {
+            "type": "string"
+          },
+          "hours_until_the_bank_closes": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "EbashITSportgearhubApiModelsInternalSettlementsSettlementPlanResponse": {
         "type": "object",
         "additionalProperties": false,
@@ -4193,7 +4343,8 @@
           },
           "settlement_plan_id": {
             "type": "string",
-            "format": "guid"
+            "format": "guid",
+            "nullable": true
           },
           "deal_id": {
             "type": "string"
@@ -4420,6 +4571,14 @@
             "type": "string",
             "nullable": true
           },
+          "photo": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EbashITSportgearhubApiModelsSellerProfileSellerPhotoResponse"
+              }
+            ]
+          },
           "status": {
             "type": "string"
           },
@@ -4434,6 +4593,30 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "EbashITSportgearhubApiModelsSellerProfileSellerPhotoResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "photo_id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "url": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
           },
           "updated_at": {
             "type": "string",
@@ -6222,6 +6405,15 @@
           },
           "ofd_receipt_url": {
             "type": "string",
+            "nullable": true
+          },
+          "fn_number": {
+            "type": "string",
+            "nullable": true
+          },
+          "receipt_datetime": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "error": {

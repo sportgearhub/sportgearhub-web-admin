@@ -1,4 +1,4 @@
-import { Banknote, Boxes, CalendarCheck, CreditCard, LayoutDashboard, PackageCheck, ReceiptText, Scale, Store, UserRound, Users } from 'lucide-react'
+import { Banknote, Boxes, CalendarCheck, CreditCard, Handshake, LayoutDashboard, PackageCheck, ReceiptText, Scale, Store, UserRound, Users } from 'lucide-react'
 import type { NavGroup, NavItem } from '../types/admin'
 
 export const navGroups: NavGroup[] = [
@@ -28,6 +28,7 @@ export const navGroups: NavGroup[] = [
       { id: 'settlements', label: 'Расчёты', icon: Scale },
       { id: 'payouts', label: 'Выплаты', icon: Banknote },
       { id: 'receipts', label: 'Чеки', icon: ReceiptText },
+      { id: 'deals', label: 'Сделки банка', icon: Handshake },
       { id: 'payments', label: 'Платежи', icon: CreditCard },
     ],
   },

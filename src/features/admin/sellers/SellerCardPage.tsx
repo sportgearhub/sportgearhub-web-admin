@@ -15,6 +15,7 @@ import {
   postSellerPayoutDestinationAction,
   postSellerPayoutRegister,
   postSellerPayoutSyncBankAccount,
+  resolveMediaUrl,
   type DealBinding,
   type DealBindingMode,
   type SellerAction,
@@ -237,6 +238,14 @@ function SummaryTab({ card }: { card: SellerCard }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Section title="Кабинет">
+        {card.profile.photo ? (
+          <img
+            src={resolveMediaUrl(card.profile.photo.url)}
+            alt={`Фото ${card.profile.displayName}`}
+            className="mb-3 h-40 w-full rounded-sm border object-cover"
+            loading="lazy"
+          />
+        ) : null}
         <dl>
           <Row label="Название" value={card.profile.displayName} />
           <Row label="Описание" value={card.profile.description} />

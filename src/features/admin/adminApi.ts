@@ -276,6 +276,14 @@ export type SellerReviewSummary = {
   message: string | null
 }
 
+export type SellerPhoto = {
+  photoId: string
+  url: string
+  contentType: string | null
+  sizeBytes: number | null
+  updatedAt: string | null
+}
+
 export type SellerProfileInfo = {
   sellerId: string
   displayName: string
@@ -284,6 +292,7 @@ export type SellerProfileInfo = {
   slug: string | null
   contactEmail: string | null
   contactPhone: string | null
+  photo: SellerPhoto | null
   status: SellerStatus
   latestReview: SellerReviewSummary | null
   createdAt: string
@@ -947,8 +956,10 @@ export type FiscalReceipt = {
   externalId: string | null
   total: number
   uuid: string | null
+  fnNumber: string | null
   fiscalDocumentNumber: string | null
   fiscalSign: string | null
+  receiptDatetime: string | null
   ofdReceiptUrl: string | null
   error: string | null
   attempts: number
@@ -1015,6 +1026,29 @@ export function getFiscalReceipts(params: ListQueryParams = {}, sellerId?: strin
 
 export function getFiscalReceipt(receiptId: string) {
   return requestJson<FiscalReceipt>(`/internal/fiscal-receipts/${id(receiptId)}`)
+}
+
+/** Platform acquiring deals (bank multisplit deals) and how close each is to closing. */
+export type PlatformDeal = {
+  bankDealId: string
+  status: string
+  openedAt: string | null
+  closesAt: string | null
+  closedAt: string | null
+  isSettled: boolean
+  health: string
+  hoursUntilTheBankCloses: number | null
+}
+
+export function getDeals() {
+  return requestJson<PlatformDeal[]>('/internal/deals')
+}
+
+/** Media is served publicly; resolve a possibly-relative media url against the API base for an <img>. */
+export function resolveMediaUrl(url: string | null | undefined): string | undefined {
+  if (!url) return undefined
+  if (/^https?:\/\//i.test(url)) return url
+  return `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`
 }
 
 

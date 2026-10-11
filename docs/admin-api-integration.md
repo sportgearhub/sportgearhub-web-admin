@@ -9,7 +9,7 @@ buttons are irreversible.
 Every error code with its status and cause is in [`docs/api/errors.md`](../errors.md).
 
 Conventions are the same as everywhere — see
-[`seller.md`](seller.md#conventions-that-hold-everywhere). Everything under `/internal` requires an
+[`seller-console-api-spec.md`](seller-console-api-spec.md#conventions-that-hold-everywhere). Everything under `/internal` requires an
 administrator session; `/api/v1/auth/…` is the same sign-in as the other two surfaces.
 
 **Read this first: most actions here are visible to a seller immediately.** Approving puts a card on
@@ -402,7 +402,7 @@ hard-coding.
 
 The list takes RSQL (`filter`, `sort`, `page`, `pageSize`) and answers the same
 `{ items, pagination }` envelope the other lists do. The operators and the sort syntax are in
-[the seller guide](seller.md#the-list) — the language is the same on every list in this API.
+[the seller guide](seller-console-api-spec.md#the-list) — the language is the same on every list in this API.
 Descending is a `-` prefix (`sort=-created_at`); `sort=created_at,desc` reads `desc` as a second
 field and is refused.
 

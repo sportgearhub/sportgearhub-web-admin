@@ -9,6 +9,7 @@ export type AdminSectionId =
   | 'settlements'
   | 'payouts'
   | 'receipts'
+  | 'deals'
   | 'payments'
   | 'users'
   | 'catalog'

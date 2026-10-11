@@ -95,9 +95,11 @@ export function ReceiptDetailPage({ receiptId, onBack, onOpenBooking }: { receip
 
           <Panel title="Фискальные данные">
             <dl>
-              <Field label="UUID" value={receipt.uuid} />
+              <Field label="ФН" value={receipt.fnNumber} />
               <Field label="ФД №" value={receipt.fiscalDocumentNumber} />
               <Field label="ФП" value={receipt.fiscalSign} />
+              <Field label="Дата чека" value={formatDateTime(receipt.receiptDatetime)} />
+              <Field label="UUID" value={receipt.uuid} />
               <Field label="Внешний ID" value={receipt.externalId} />
             </dl>
             {receipt.status !== 'Done' ? <p className="mt-2 text-xs text-muted-foreground">Фискальные реквизиты появляются после успешной регистрации в ОФД.</p> : null}
